@@ -87,7 +87,7 @@ class UTF8 {
 
 public:
 
-	static std::wstring GetWideChar(const std::string& s){
+	static std::wstring GetWideCharFromMultiByte(const std::string& s){
 
 		return GetWideChar(s, CP_ACP);
 	}

@@ -4,7 +4,7 @@
 
 void Response(std::shared_ptr<TcpSocket> handle, std::unique_ptr<HttpReqest>& request, std::wstring& folderPath){
 	
-	auto path = UTF8::GetWideChar(request->GetPath());
+	auto path = UTF8::GetWideCharFromUTF8(request->GetPath());
 	path =  folderPath + path;
 	
 	auto isff = File::IsFileOrFolder(path);
@@ -99,7 +99,7 @@ int main(int argc, char *argv[]) {
 
 	std::string path{argv[1]};
 
-	auto wpath = ::UTF8::GetWideChar(path);
+	auto wpath = ::UTF8::GetWideCharFromMultiByte(path);
 	std::replace(wpath.begin(), wpath.end(), L'\\', L'/');
 	Info::Initialization();
 

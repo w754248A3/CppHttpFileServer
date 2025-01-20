@@ -3,6 +3,7 @@
 #include <exception>
 #include <functional>
 #include <minwindef.h>
+#include <string_view>
 #include <winnt.h>
 #ifndef _MYIO
 #define _MYIO
@@ -29,6 +30,23 @@
 #include <wininet.h>
 #include <mstcpip.h>
 #include "leikaifeng.h"
+
+#define MYTEXT(args) args
+
+namespace mt {
+
+
+using mystring = std::string;
+
+using mystring_view= std::string_view;
+
+using mychar = char;
+}
+
+
+
+
+
 
 template<typename TIn, typename TOut>
 TOut Integer_cast(TIn v){
@@ -272,7 +290,7 @@ public:
 
 	static auto& GetContentTypeMap() {
 
-		static std::unordered_map<std::wstring_view, std::u8string_view> map{};
+		static std::unordered_map<std::wstring_view, mt::mystring_view> map{};
 
 		return map;
 	}
@@ -282,49 +300,49 @@ public:
 		decltype(auto) map = GetContentTypeMap();
 
 
-		map.emplace(L".html", u8"text/html");
-		map.emplace(L".htm", u8"text/html");
-		map.emplace(L".css", u8"text/css");
-		map.emplace(L".js", u8"application/javascript");
-		map.emplace(L".json", u8"application/json");
-		map.emplace(L".xml", u8"application/xml");
-		map.emplace(L".txt", u8"text/plain");
+		map.emplace(L".html", MYTEXT("text/html"));
+		map.emplace(L".htm", MYTEXT("text/html"));
+		map.emplace(L".css", MYTEXT("text/css"));
+		map.emplace(L".js", MYTEXT("application/javascript"));
+		map.emplace(L".json", MYTEXT("application/json"));
+		map.emplace(L".xml", MYTEXT("application/xml"));
+		map.emplace(L".txt", MYTEXT("text/plain"));
 
-		map.emplace(L".jpg", u8"image/jpeg");
-		map.emplace(L".jpeg", u8"image/jpeg");
-		map.emplace(L".png", u8"image/png");
-		map.emplace(L".gif", u8"image/gif");
-		map.emplace(L".bmp", u8"image/bmp");
-		map.emplace(L".svg", u8"image/svg+xml");
-		map.emplace(L".ico", u8"image/vnd.microsoft.icon");
-		map.emplace(L".webp", u8"image/webp");
+		map.emplace(L".jpg", MYTEXT("image/jpeg"));
+		map.emplace(L".jpeg", MYTEXT("image/jpeg"));
+		map.emplace(L".png", MYTEXT("image/png"));
+		map.emplace(L".gif", MYTEXT("image/gif"));
+		map.emplace(L".bmp", MYTEXT("image/bmp"));
+		map.emplace(L".svg", MYTEXT("image/svg+xml"));
+		map.emplace(L".ico", MYTEXT("image/vnd.microsoft.icon"));
+		map.emplace(L".webp", MYTEXT("image/webp"));
 
-		map.emplace(L".mp3", u8"audio/mpeg");
-		map.emplace(L".wav", u8"audio/wav");
-		map.emplace(L".ogg", u8"audio/ogg");
-		map.emplace(L".m4a", u8"audio/mp4");
-		map.emplace(L".flac", u8"audio/flac");
+		map.emplace(L".mp3", MYTEXT("audio/mpeg"));
+		map.emplace(L".wav", MYTEXT("audio/wav"));
+		map.emplace(L".ogg", MYTEXT("audio/ogg"));
+		map.emplace(L".m4a", MYTEXT("audio/mp4"));
+		map.emplace(L".flac", MYTEXT("audio/flac"));
 
-		map.emplace(L".mp4", u8"video/mp4");
-		map.emplace(L".mkv", u8"video/x-matroska");
-		map.emplace(L".webm", u8"video/webm");
-		map.emplace(L".avi", u8"video/x-msvideo");
-		map.emplace(L".mov", u8"video/quicktime");
-		map.emplace(L".flv", u8"video/x-flv");
-		map.emplace(L".ts", u8"video/vnd.iptvforum.ttsmpeg2");
+		map.emplace(L".mp4", MYTEXT("video/mp4"));
+		map.emplace(L".mkv", MYTEXT("video/x-matroska"));
+		map.emplace(L".webm", MYTEXT("video/webm"));
+		map.emplace(L".avi", MYTEXT("video/x-msvideo"));
+		map.emplace(L".mov", MYTEXT("video/quicktime"));
+		map.emplace(L".flv", MYTEXT("video/x-flv"));
+		map.emplace(L".ts", MYTEXT("video/vnd.iptvforum.ttsmpeg2"));
 
-		map.emplace(L".pdf", u8"application/pdf");
-		map.emplace(L".zip", u8"application/zip");
-		map.emplace(L".rar", u8"application/vnd.rar");
-		map.emplace(L".7z", u8"application/x-7z-compressed");
-		map.emplace(L".tar", u8"application/x-tar");
-		map.emplace(L".gz", u8"application/gzip");
-		map.emplace(L".doc", u8"application/msword");
-		map.emplace(L".docx", u8"application/vnd.openxmlformats-officedocument.wordprocessingml.document");
-		map.emplace(L".ppt", u8"application/vnd.ms-powerpoint");
-		map.emplace(L".pptx", u8"application/vnd.openxmlformats-officedocument.presentationml.presentation");
-		map.emplace(L".xls", u8"application/vnd.ms-excel");
-		map.emplace(L".xlsx", u8"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+		map.emplace(L".pdf", MYTEXT("application/pdf"));
+		map.emplace(L".zip", MYTEXT("application/zip"));
+		map.emplace(L".rar", MYTEXT("application/vnd.rar"));
+		map.emplace(L".7z", MYTEXT("application/x-7z-compressed"));
+		map.emplace(L".tar", MYTEXT("application/x-tar"));
+		map.emplace(L".gz", MYTEXT("application/gzip"));
+		map.emplace(L".doc", MYTEXT("application/msword"));
+		map.emplace(L".docx", MYTEXT("application/vnd.openxmlformats-officedocument.wordprocessingml.document"));
+		map.emplace(L".ppt", MYTEXT("application/vnd.ms-powerpoint"));
+		map.emplace(L".pptx", MYTEXT("application/vnd.openxmlformats-officedocument.presentationml.presentation"));
+		map.emplace(L".xls", MYTEXT("application/vnd.ms-excel"));
+		map.emplace(L".xlsx", MYTEXT("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
 
 	}
 
@@ -1229,20 +1247,20 @@ class Url {
 		}
 	}
 
-	char8_t static GetCharFrom(const char8_t* buffer) {
+	mt::mychar static GetCharFrom(const mt::mychar* buffer) {
 
 		auto value_1 = static_cast<uint32_t>(*buffer);
 
 		auto value_2 = static_cast<uint32_t>(*(buffer + 1));
 
-		return static_cast<char8_t>((Url::GetNumber(value_1) * 16) + Url::GetNumber(value_2));
+		return static_cast<mt::mychar>((Url::GetNumber(value_1) * 16) + Url::GetNumber(value_2));
 	}
 
-	static std::u8string UrlDecode(const std::u8string_view& s) {
+	static mt::mystring UrlDecode(const mt::mystring_view& s) {
 
 		constexpr size_t SIZE = 2;
 
-		std::u8string ret{};
+		mt::mystring ret{};
 
 		ret.reserve(s.size());
 
@@ -1281,7 +1299,7 @@ class Url {
 	}
 
 public:
-	static bool UrlDecode(const std::u8string_view& s, std::u8string& out_s) {
+	static bool UrlDecode(const mt::mystring_view& s, mt::mystring& out_s) {
 		try {
 			out_s = Url::UrlDecode(s);
 			return true;
@@ -1296,7 +1314,7 @@ public:
 
 class Number {
 public:
-	static bool Parse(const std::u8string_view& s, size_t& out_value) {
+	static bool Parse(const mt::mystring_view& s, size_t& out_value) {
 
 		constexpr size_t FIRST = u8'0';
 
@@ -1306,7 +1324,7 @@ public:
 
 		for (auto c : s)
 		{
-			size_t n = c;
+			size_t n = static_cast<size_t>(c);
 
 			n -= FIRST;
 
@@ -1326,9 +1344,9 @@ public:
 
 
 	template<typename T>
-	static void ToString(std::u8string& s, T value) requires(std::is_same_v<T, UINT16> || std::is_same_v<T, UINT32> || std::is_same_v<T, UINT64>) {
+	static void ToString(mt::mystring& s, T value) requires(std::is_same_v<T, UINT16> || std::is_same_v<T, UINT32> || std::is_same_v<T, UINT64>) {
 
-		constexpr char8_t MAP[] = u8"0123456789";
+		constexpr mt::mychar MAP[] = MYTEXT("0123456789");
 
 		constexpr T SIZE = 10;
 
@@ -1391,15 +1409,15 @@ private:
 	constexpr static size_t BUFFER_SIZE = 4096;
 
 	//这两个变量目的是为了给map中的view保存缓存生存期
-	std::u8string m_buffer;
-	std::u8string m_firstLine;
+	mt::mystring m_buffer;
+	mt::mystring m_firstLine;
 
 
-	std::u8string m_path;
+	mt::mystring m_path;
 	
-	std::unordered_map<std::u8string_view, std::u8string_view> m_dic;
-	std::unordered_map<std::u8string_view, std::u8string_view> m_queryArgs;
-	static std::u8string Path(std::u8string_view s) {
+	std::unordered_map<mt::mystring_view, mt::mystring_view> m_dic;
+	std::unordered_map<mt::mystring_view, mt::mystring_view> m_queryArgs;
+	static mt::mystring Path(mt::mystring_view s) {
 
 		auto first = s.find(u8' ');
 
@@ -1411,7 +1429,7 @@ private:
 
 			s.remove_prefix(first + 1);
 
-			std::u8string ret{};
+			mt::mystring ret{};
 
 			if (Url::UrlDecode(s, ret)) {
 				return ret;
@@ -1425,9 +1443,9 @@ private:
 		}
 	}
 
-	static bool Find(std::u8string_view& s, std::u8string_view& out_s) {
+	static bool Find(mt::mystring_view& s, mt::mystring_view& out_s) {
 		
-		auto index =  s.find(u8"\r\n");
+		auto index =  s.find(MYTEXT("\r\n"));
 
 		if (index == std::remove_reference_t<decltype(s)>::npos) {
 		
@@ -1451,17 +1469,17 @@ private:
 		}
 	}
 
-	static std::u8string_view TrimSpans(std::u8string_view s){
+	static mt::mystring_view TrimSpans(mt::mystring_view s){
 
 		while (true)
 		{
-			auto a = s.find(u8" ");
+			auto a = s.find(MYTEXT(" "));
 
 			if (a != decltype(s)::npos) {
 				s.remove_prefix(1);
 			}
 			else{
-				auto b = s.rfind(u8" ");
+				auto b = s.rfind(MYTEXT(" "));
 				while (true)
 				{
 					if (b != decltype(s)::npos) {
@@ -1476,9 +1494,9 @@ private:
 		}
 	}
 
-	static void AddDic(std::unordered_map<std::u8string_view, std::u8string_view>& dic, std::u8string_view s) {
+	static void AddDic(std::unordered_map<mt::mystring_view, mt::mystring_view>& dic, mt::mystring_view s) {
 		
-		auto index = s.find(u8":");
+		auto index = s.find(MYTEXT(":"));
 
 		if (index == decltype(s)::npos) {
 			throw HttpReqest::FormatException{"find header : error"};
@@ -1495,13 +1513,13 @@ private:
 	}
 
 
-	static bool ParseRange(std::u8string_view s, std::pair<size_t, std::pair<bool, size_t>>& out_value) {
+	static bool ParseRange(mt::mystring_view s, std::pair<size_t, std::pair<bool, size_t>>& out_value) {
 
-		constexpr char8_t HEAD[] = u8"bytes=";
+		constexpr mt::mychar HEAD[] = MYTEXT("bytes=");
 
 		constexpr size_t HEAD_SIZE = sizeof(HEAD) - 1;
 
-		constexpr char8_t B = u8'-';
+		constexpr mt::mychar B = u8'-';
 
 		constexpr size_t B_SIZE = 1;
 
@@ -1548,12 +1566,12 @@ private:
 	}
 
 	static
-		std::u8string_view
-		ParseQuery(std::u8string_view s,
-				   std::unordered_map<std::u8string_view, std::u8string_view> &dic)
+		mt::mystring_view
+		ParseQuery(mt::mystring_view s,
+				   std::unordered_map<mt::mystring_view, mt::mystring_view> &dic)
 	{
 
-		auto index = s.find(u8"?");
+		auto index = s.find(MYTEXT("?"));
 
 		if (index == std::remove_reference_t<decltype(s)>::npos)
 		{
@@ -1561,15 +1579,15 @@ private:
 			return s.substr(0, s.size());
 		}
 
-		std::u8string_view path = s.substr(0, index);
+		mt::mystring_view path = s.substr(0, index);
 
 		s.remove_prefix(index + 1);
 
 		while (true)
 		{
 
-			auto index = s.find(u8"&");
-			std::u8string_view query_args{};
+			auto index = s.find(MYTEXT("&"));
+			mt::mystring_view query_args{};
 			if (index == std::remove_reference_t<decltype(s)>::npos)
 			{
 
@@ -1584,14 +1602,14 @@ private:
 
 			if (query_args.size() != 0)
 			{
-				auto index = query_args.find(u8"=");
+				auto index = query_args.find(MYTEXT("="));
 
 				if (index == std::remove_reference_t<decltype(s)>::npos)
 				{
 
 					auto key = query_args.substr(0, query_args.size());
 
-					auto value = std::u8string_view{};
+					auto value = mt::mystring_view{};
 
 					dic.emplace(key, value);
 				}
@@ -1627,7 +1645,7 @@ public:
 		return m_path;
 	}
 
-	std::u8string GetValue(const std::u8string& key){
+	mt::mystring GetValue(const mt::mystring& key){
 		
 		decltype(auto) dic = this->GetDic();
 
@@ -1635,31 +1653,31 @@ public:
 
 		
 		if (item == dic.end()) {
-			return u8"";
+			return MYTEXT("");
 		}
 		else {
-			return std::u8string{ item->second};
+			return mt::mystring{ item->second};
 		}
 	}
 
-	std::u8string GetQueryValue(const std::u8string& key){
+	mt::mystring GetQueryValue(const mt::mystring& key){
 		auto& dic = this->m_queryArgs;
 
 		auto item = dic.find(key);
 
 		
 		if (item == dic.end()) {
-			return u8"";
+			return MYTEXT("");
 		}
 		else {
-			return std::u8string{ item->second};
+			return mt::mystring{ item->second};
 		}
 
 	}
 
 	bool GetRange(std::pair<size_t, std::pair<bool, size_t>>& out_value) const {
 		
-		std::u8string key{ u8"Range" };
+		mt::mystring key{ MYTEXT("Range") };
 
 
 		decltype(auto) dic = this->GetDic();
@@ -1690,7 +1708,7 @@ public:
 
 		auto& firstLine = ret->m_firstLine;
 
-		std::u8string_view view{};
+		mt::mystring_view view{};
 		{
 			ULONG length =0;
 			auto bufu8 = buffer.data();
@@ -1704,8 +1722,8 @@ public:
 
 				canReadSize-=n;
 				view = {bufu8, length};
-				auto end = view.find(u8"\r\n\r\n");
-				if(end != std::u8string_view::npos){
+				auto end = view.find(MYTEXT("\r\n\r\n"));
+				if(end != mt::mystring_view::npos){
 					if(end+4 == length){
 						break;
 					}
@@ -1725,22 +1743,22 @@ public:
 		}
 
 		
-		//Print(::UTF8::GetMultiByte(::UTF8::GetWideChar(std::u8string{ view})));
-		std::u8string_view value{};
+		//Print(::UTF8::GetMultiByte(::UTF8::GetWideChar(mt::mystring{ view})));
+		mt::mystring_view value{};
 		
 		if (!HttpReqest::Find(view, value)) {
 		
 			throw HttpReqest::FormatException{"find header line error length:"};
 		}
 		else {
-			//Print(::UTF8::GetMultiByte(::UTF8::GetWideChar(std::u8string{ value})));
+			//Print(::UTF8::GetMultiByte(::UTF8::GetWideChar(mt::mystring{ value})));
 			//path = HttpReqest::Path(value);
 			
 			firstLine = HttpReqest::Path(value);
 
 			auto pathview = ParseQuery(firstLine, queryArgs);
 
-			path = std::u8string{pathview};
+			path = mt::mystring{pathview};
 			
 			while (HttpReqest::Find(view, value))
 			{
@@ -1755,7 +1773,7 @@ public:
 
 class HttpResponse : Delete_Base {
 
-	std::u8string m_header;
+	mt::mystring m_header;
 
 protected:
 	virtual void Send_(std::shared_ptr<TcpSocket> handle, char* header, DWORD size) = 0;
@@ -1765,24 +1783,24 @@ public:
 		
 		m_header.reserve(1024);
 
-		m_header.append(u8"HTTP/1.1 ");
+		m_header.append(MYTEXT("HTTP/1.1 "));
 
 		Number::ToString(m_header, statusCode);
 
 		if(statusCode == 404){
-			m_header.append(u8" Not Found\r\n");
+			m_header.append(MYTEXT(" Not Found\r\n"));
 		}
 		else{
-			m_header.append(u8" OK\r\n");
+			m_header.append(MYTEXT(" OK\r\n"));
 		}
 
-		m_header.append(u8"Connection: keep-alive\r\n");
-		m_header.append(u8"Keep-Alive: timeout=20, max=1000\r\n");
+		m_header.append(MYTEXT("Connection: keep-alive\r\n"));
+		m_header.append(MYTEXT("Keep-Alive: timeout=20, max=1000\r\n"));
 	}
 
 	void SetContentRange(size_t start, size_t end, size_t size) {
 		
-		m_header.append(u8"Content-Range: bytes ");
+		m_header.append(MYTEXT("Content-Range: bytes "));
 		
 		Number::ToString(m_header, start);
 		
@@ -1794,19 +1812,19 @@ public:
 
 		Number::ToString(m_header, size);
 
-		m_header.append(u8"\r\n");
+		m_header.append(MYTEXT("\r\n"));
 	}
 
 	void SetContentLength(size_t size) {
-		m_header.append(u8"Content-Length: ");
+		m_header.append(MYTEXT("Content-Length: "));
 
 		Number::ToString(m_header, size);
 
-		m_header.append(u8"\r\n");
+		m_header.append(MYTEXT("\r\n"));
 	}
 
-	void Set(const std::u8string& key, const std::u8string& value) {
-		m_header.append(key).append(u8": ").append(value).append(u8"\r\n");
+	void Set(const mt::mystring& key, const mt::mystring& value) {
+		m_header.append(key).append(MYTEXT(": ")).append(value).append(MYTEXT("\r\n"));
 	}
 
 	
@@ -1816,10 +1834,10 @@ public:
 
 		auto item = map.find(s);
 
-		m_header.append(u8"Content-Type: ");
+		m_header.append(MYTEXT("Content-Type: "));
 
 		if (item == map.end()) {
-			m_header.append(u8"application/octet-stream");
+			m_header.append(MYTEXT("application/octet-stream"));
 		}
 		else {
 
@@ -1827,7 +1845,7 @@ public:
 
 		}
 
-		m_header.append(u8"\r\n");
+		m_header.append(MYTEXT("\r\n"));
 	}
 	
 
@@ -1835,7 +1853,7 @@ public:
 
 	void Send(std::shared_ptr<TcpSocket> handle) {
 	
-		m_header.append(u8"\r\n");
+		m_header.append(MYTEXT("\r\n"));
 
 		auto buf = reinterpret_cast<char*>(m_header.data());
 
@@ -1853,7 +1871,7 @@ public:
 
 class HttpResponseStrContent : public HttpResponse {
 
-	std::u8string m_str;
+	mt::mystring m_str;
 
 
 protected:
@@ -1872,17 +1890,17 @@ protected:
 	}
 public:
 
-	constexpr static auto JSON_TYPE = u8"application/json";
+	constexpr static auto JSON_TYPE = MYTEXT("application/json");
 
-	constexpr static auto HTML_TYPE =u8"text/html; charset=utf-8";
+	constexpr static auto HTML_TYPE = MYTEXT("text/html; charset=utf-8");
 
-	HttpResponseStrContent(size_t statusCode, const std::wstring& s) : HttpResponseStrContent(statusCode, UTF8::GetUTF8(s), HTML_TYPE) {
+	HttpResponseStrContent(size_t statusCode, const std::wstring& s) : HttpResponseStrContent(statusCode, UTF8::GetUTF8ToString(s), HTML_TYPE) {
 
 	}
 
-	HttpResponseStrContent(size_t statusCode, std::u8string&& s, const std::u8string& type) : HttpResponse(statusCode), m_str(s) {
+	HttpResponseStrContent(size_t statusCode, mt::mystring&& s, const mt::mystring& type) : HttpResponse(statusCode), m_str(s) {
 
-		this->Set(u8"Content-Type", type);
+		this->Set(MYTEXT("Content-Type"), type);
 		this->SetContentLength(m_str.size());
 
 	}

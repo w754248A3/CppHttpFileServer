@@ -1,9 +1,11 @@
 ﻿#pragma once
+#include <charconv>
 #include <cstddef>
 #include <exception>
 #include <functional>
 #include <minwindef.h>
 #include <string_view>
+#include <system_error>
 #include <winnt.h>
 #ifndef _MYIO
 #define _MYIO
@@ -1314,68 +1316,36 @@ public:
 
 class Number {
 public:
-	static bool Parse(const mt::mystring_view& s, size_t& out_value) {
+	template<typename T>
+	static bool Parse(const mt::mystring_view& s, T& out_value) requires(std::is_same_v<T, UINT16> || std::is_same_v<T, UINT32> || std::is_same_v<T, UINT64>)  {
+		
+		auto first = s.begin();
+		auto end = s.end();
+		auto res = std::from_chars(first, end, out_value, 10);
 
-		constexpr size_t FIRST = u8'0';
-
-		constexpr size_t LAST = u8'9';
-
-		size_t value = 0;
-
-		for (auto c : s)
-		{
-			size_t n = static_cast<size_t>(c);
-
-			n -= FIRST;
-
-			if (n <= LAST) {
-				value *= 10;
-				value += n;
-			}
-			else {
-				return false;
-			}
+		if(res.ec != std::errc{} || res.ptr != end){
+			return false;
 		}
+		else{
+			return true;
+		}
+		
 
-		out_value = value;
-
-		return true;
 	}
 
 
 	template<typename T>
 	static void ToString(mt::mystring& s, T value) requires(std::is_same_v<T, UINT16> || std::is_same_v<T, UINT32> || std::is_same_v<T, UINT64>) {
 
-		constexpr mt::mychar MAP[] = MYTEXT("0123456789");
+		char buff[128];
+		auto res = std::to_chars(buff, buff+sizeof(buff), value, 10);
 
-		constexpr T SIZE = 10;
-
-		constexpr T ZEOR = 0;
-
-		auto first = s.size();
-
-		do
-		{
-			auto n = value % SIZE;
-
-			value /= SIZE;
-
-			s += (MAP[n]);
-
-		} while (value != 0);
-
-		auto last = s.size() - 1;
-
-		while (first < last)
-		{
-			auto v = s[last];
-
-			s[last] = s[first];
-
-			s[first] = v;
-
-			first++;
-			last--;
+		if(res.ec!=std::errc{}){
+			throw ArgumentException("ToString error");
+		}
+		else{
+			auto size = res.ptr - buff;
+			s.append(buff, static_cast<size_t>(size));
 		}
 	}
 

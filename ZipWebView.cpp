@@ -5,7 +5,9 @@
 #include <boost/json/serialize.hpp>
 #include <exception>
 #include <memory>
+#include <utility>
 #include "include/leikaifeng.h"
+#include "include/myio.h"
 #include "myio.h"
 
 
@@ -215,9 +217,9 @@ void Response2(std::shared_ptr<TcpSocket> handle, std::unique_ptr<HttpReqest>& r
 
     reader->OpenFile(filePath, *v);
 
-    auto isjsonstr = request->GetQueryValue(u8"json");
+    auto isjsonstr = request->GetQueryValue(MYTEXT("json"));
 
-    if(isjsonstr == u8"1"){
+    if(isjsonstr == MYTEXT("1")){
         boost::json::array vs{};
 
         reader->GetFileNameAndIndex([&vs](uint32_t index, const std::string& name){
@@ -232,7 +234,7 @@ void Response2(std::shared_ptr<TcpSocket> handle, std::unique_ptr<HttpReqest>& r
 
         });
         auto cont = boost::json::serialize(vs);
-        HttpResponseStrContent strcont{200, UTF8::GetUTF8(UTF8::GetWideCharFromUTF8(cont)), HttpResponseStrContent::JSON_TYPE};
+        HttpResponseStrContent strcont{200, std::move(cont), HttpResponseStrContent::JSON_TYPE};
 
 
         strcont.Send(handle);
@@ -241,17 +243,17 @@ void Response2(std::shared_ptr<TcpSocket> handle, std::unique_ptr<HttpReqest>& r
     }
 
 
-    auto indexstring = request->GetQueryValue(u8"Index");
+    auto indexstring = request->GetQueryValue(MYTEXT("Index"));
 
 
-    if(indexstring == u8""){
+    if(indexstring == MYTEXT("")){
          Html html {};
 
         reader->GetFileNameAndIndex([&html](uint32_t index, const std::string& name){
 
-            std::u8string path{};
+            mt::mystring path{};
             Number::ToString(path, index);
-            auto wpath = UTF8::GetWideChar(path);
+            auto wpath = UTF8::GetWideCharFromUTF8(path);
             wpath.insert(0, L"?Index=");
             html.Add(false, wpath, UTF8::GetWideCharFromUTF8( name));
 
@@ -267,8 +269,8 @@ void Response2(std::shared_ptr<TcpSocket> handle, std::unique_ptr<HttpReqest>& r
     }
 
     size_t index;
-    std::u8string view{indexstring};
-    if(!Number::Parse(view, index)){
+  
+    if(!Number::Parse(indexstring, index)){
 
         HttpResponse404 res404{};
         res404.Send(handle);
@@ -298,7 +300,7 @@ void Response2(std::shared_ptr<TcpSocket> handle, std::unique_ptr<HttpReqest>& r
 
 void Response(std::shared_ptr<TcpSocket> handle, std::unique_ptr<HttpReqest>& request, std::shared_ptr<MyZipReader2> reader, std::wstring& folderPath, std::wstring& appPath){
 	
-	auto path = UTF8::GetWideChar(request->GetPath());
+	auto path = UTF8::GetWideCharFromUTF8(request->GetPath());
 
     
     if(path.starts_with(L"/app")){
@@ -350,9 +352,9 @@ void Response(std::shared_ptr<TcpSocket> handle, std::unique_ptr<HttpReqest>& re
 
 
 
-        auto isjsonstr = request->GetQueryValue(u8"json");
+        auto isjsonstr = request->GetQueryValue(MYTEXT("json"));
 
-        if(isjsonstr == u8"1"){
+        if(isjsonstr == MYTEXT("1")){
             boost::json::array vs{};
 
 
@@ -369,12 +371,14 @@ void Response(std::shared_ptr<TcpSocket> handle, std::unique_ptr<HttpReqest>& re
                 vs.emplace_back(kv);
             }
 
+            {
+                auto cont = boost::json::serialize(vs);
+                HttpResponseStrContent strcont{200, std::move(cont), HttpResponseStrContent::JSON_TYPE};
+                strcont.Send(handle);
+            }
+            
 
-            auto cont = boost::json::serialize(vs);
-            HttpResponseStrContent strcont{200, UTF8::GetUTF8(UTF8::GetWideCharFromUTF8(cont)), HttpResponseStrContent::JSON_TYPE};
-
-
-            strcont.Send(handle);
+            
 
             return;
         }
@@ -458,12 +462,12 @@ int main(int argc, char *argv[]) {
 	
     std::string apppath{argv[1]};
 
-    auto wapppath = ::UTF8::GetWideChar(apppath);
+    auto wapppath = ::UTF8::GetWideCharFromMultiByte(apppath);
     std::replace(wapppath.begin(), wapppath.end(), L'\\', L'/');
 
     std::string path{argv[2]};
 
-	auto wpath = ::UTF8::GetWideChar(path);
+	auto wpath = ::UTF8::GetWideCharFromMultiByte(path);
     std::replace(wpath.begin(), wpath.end(), L'\\', L'/');
 
 	std::wstring dllpath{L"7z.dll"};

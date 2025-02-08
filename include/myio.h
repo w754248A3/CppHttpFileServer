@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include <charconv>
 #include <cstddef>
+#include <cstdint>
 #include <exception>
 #include <functional>
 #include <minwindef.h>
@@ -71,8 +72,53 @@ void WSAExit(const std::string& message) {
 
 
 class MyFunc{
+
 public:
+
+	template<typename TRead, typename TWrite>
+	requires (
+		std::is_invocable_r_v<uint32_t, TRead, size_t, char**, uint32_t>&&
+		std::is_invocable_r_v<uint32_t, TWrite, char*, uint32_t>)
 	static void CopyTo(
+		size_t readOffset,
+		size_t needCopyCount,
+		uint32_t const oneSendCount,
+		TRead&& readfunc, 
+		TWrite&& writefunc){
+
+		
+		while (needCopyCount > 0)
+		{
+			uint32_t count=0;
+			if(needCopyCount >= oneSendCount){
+				count=oneSendCount;
+
+
+			}
+			else{
+				count = (uint32_t)needCopyCount;
+			}
+
+			char* buf=nullptr;
+			uint32_t redCount = readfunc(readOffset, &buf, count);
+
+			if(redCount ==0 || buf==nullptr){
+				Print("file loop read 0");
+				return;
+			}
+
+			uint32_t n = writefunc(buf, redCount);
+
+			if(n == 0){
+				return;
+			}
+			needCopyCount-=n;
+			readOffset+=n;
+		}
+		
+	}
+
+	static void CopyTo_(
 		std::function<uint32_t(char*, uint32_t, size_t)> readfunc, 
 		std::function<uint32_t(char*, uint32_t)> writefunc,
 		size_t offset, 
@@ -389,32 +435,18 @@ class IPEndPoint {
 	sockaddr_in m_value;
 
 public:
-	IPEndPoint(UCHAR ip1, UCHAR ip2, UCHAR ip3, UCHAR ip4, USHORT port) {
+	IPEndPoint(const char* ipstr, USHORT port) {
 		sockaddr_in value = {};
 
 		value.sin_family = AF_INET;
 
-		value.sin_addr.S_un.S_un_b.s_b1 = ip1;
-		value.sin_addr.S_un.S_un_b.s_b2 = ip2;
-		value.sin_addr.S_un.S_un_b.s_b3 = ip3;
-		value.sin_addr.S_un.S_un_b.s_b4 = ip4;
-
+		value.sin_addr.s_addr = inet_addr(ipstr);
+		
 		value.sin_port = htons(port);
 
 		m_value = value;
 	}
 
-	IPEndPoint(DWORD ip, USHORT port) {
-		sockaddr_in value = {};
-
-		value.sin_family = AF_INET;
-
-		value.sin_addr.S_un.S_addr = ip;
-
-		value.sin_port = htons(port);
-
-		m_value = value;
-	}
 
 	auto Get() const {
 		return m_value;
@@ -965,7 +997,7 @@ public:
 		
 		auto handle = std::make_shared<TcpSocket>();
 
-		TcpSocket::Bind(handle->GetHandle(), IPEndPoint{ 0,0,0,0,0 });
+		TcpSocket::Bind(handle->GetHandle(), IPEndPoint{ "0.0.0.0", 0 });
 
 		auto address = endPoint.Get();
 
@@ -2036,11 +2068,23 @@ protected:
 		Print("use send buffer");
 		handle->Write(header, size);
 
+		
+		const uint32_t oneSendCount= 65536;
+		char BUF[oneSendCount];
 		MyFunc::CopyTo(
-			[&file= m_file](auto buf, auto size, auto offset){return file->Read(buf, size, offset);},
-			[&soc= handle](auto buf, auto size){return soc->Write(buf, size);},
 			m_start_range,
-			length);
+			length,
+			oneSendCount,
+			[&file = m_file, &BUF](size_t offset, char** buf_p, uint32_t count){
+				auto i = file->Read(BUF, count, offset);
+
+				*buf_p=BUF;
+
+				return i;
+			},
+			[&handle](char* buf, uint32_t count){
+				return handle->Write(buf, count);
+			});
 	}
 
 public:
@@ -2086,28 +2130,27 @@ protected:
 			Print("loop send to data");
 
 			handle->Write(header, size);
-
+			const uint32_t oneSendCount = 65536;
+			
+			//char BUF[oneSendCount];
 			MyFunc::CopyTo(
-				[&databuf= *m_buf](auto buf, auto size, auto offset){
+				m_start_range,
+				length,
+				oneSendCount,	
+				[&databuf= *m_buf](size_t offset, char** buf_p, uint32_t count){
 
-					auto canreadcount = databuf.size() - offset;
+					*buf_p = (char*)(databuf.data()+offset);
 
-					uint32_t res;
-					if(canreadcount <= size){
-						res =  static_cast<uint32_t>(canreadcount);
-					}
-					else{
-						res = size;
-					}
-
-					CopyMemory(buf, databuf.data()+offset, res);
-
-					return res;
+					//Print("run");
+					//CopyMemory(BUF, databuf.data()+offset, count);
+					
+					return count;
 
 				},
-				[&soc= handle](auto buf, auto size){return soc->Write(buf, size);},
-				m_start_range,
-				length);
+				[&soc= handle](char* buf, uint32_t count){
+					return soc->Write(buf, count);
+				
+				});
 		}
 		
 	}

@@ -1,5 +1,8 @@
 
+#include "include/leikaifeng.h"
 #include "myio.h"
+#include <filesystem>
+#include <string>
 
 
 void Response(std::shared_ptr<TcpSocket> handle, std::unique_ptr<HttpReqest>& request, std::wstring& folderPath){
@@ -90,24 +93,61 @@ void NewAcceptAction(SOCKET s, std::wstring path){
 
 }
 
-int main(int argc, char *argv[]) {
-	if(argc != 2){
-		Exit("argce != 2");
 
-		return 0;
+
+
+std::wstring GetExePath(){
+
+    wchar_t szFileName[MAX_PATH];
+
+    auto res = GetModuleFileNameW(NULL, szFileName, MAX_PATH);
+    auto error = GetLastError();
+
+    if(res != 0 && error != ERROR_INSUFFICIENT_BUFFER){
+        return  std::wstring{szFileName, res};
+    }
+    else{
+        Exit("GetModuleFileNameW error", (int)error);   
+        return std::wstring{};
+    }
+    
+}
+
+
+std::wstring GetExeFolder(){
+    auto exePath = GetExePath();
+
+    std::filesystem::path p{exePath};
+
+    return  p.parent_path();
+
+
+}
+
+
+
+int main(int argc, char *argv[]) {
+
+	std::wstring wpath{};
+	if(argc != 2){
+		Print("root from is exe path");
+		wpath = GetExeFolder();
+	}
+	else{
+		std::string path{argv[1]};
+
+		wpath = ::UTF8::GetWideCharFromMultiByte(path);
 	}
 
-	std::string path{argv[1]};
-
-	auto wpath = ::UTF8::GetWideCharFromMultiByte(path);
+	
 	std::replace(wpath.begin(), wpath.end(), L'\\', L'/');
 	Info::Initialization();
 
 
 	TcpSocketListenSync lis{};
 	
-	lis.Bind(IPEndPoint(0, 0, 0, 0, 80));
-
+	lis.Bind(IPEndPoint("0.0.0.0", 80));
+	
 	lis.Listen(16);
 
 	std::vector<Fiber*> f_v{};

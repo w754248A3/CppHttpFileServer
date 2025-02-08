@@ -482,7 +482,7 @@ int main(int argc, char *argv[]) {
     f->Start([](std::shared_ptr<MyZipReader2> p, std::wstring wpath, std::wstring wapppath){
 
         TcpSocketListen lis{};
-        lis.Bind(IPEndPoint{0,0,0,0, 80});
+        lis.Bind(IPEndPoint{"0.0.0.0", 80});
         lis.Listen(6);
 
         while (true)

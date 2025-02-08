@@ -822,7 +822,7 @@ public:
 			offset.QuadPart=Integer_cast<size_t, LONGLONG>(offsetCount);
 
 			overlapped.Offset = offset.LowPart;
-			overlapped.OffsetHigh =Integer_cast<LONG, DWORD>(offset.HighPart);
+			overlapped.OffsetHigh =static_cast<DWORD>(offset.HighPart);
 		}
 		
 		
@@ -865,7 +865,7 @@ public:
 	~CreateReadOnlyFile()
 	{
 		CloseHandle(m_handle);
-		Print("file close");
+		
 	}
 };
 
@@ -1059,7 +1059,7 @@ public:
 			if(isok == SOCKET_ERROR){
 				WSAExit("close socker error");
 			}
-			Print("socket close");
+			
 		}
 
 		
@@ -1937,9 +1937,9 @@ protected:
 
 class HttpResponseRangeContent : public HttpResponse {
 
-	constexpr static size_t BAO_LIU_ZI_JIE_COUNT = 1024*1024*8;
+	//constexpr static size_t BAO_LIU_ZI_JIE_COUNT = 1024*1024*8;
 
-	constexpr static size_t MAX_SEND_LENGTH = std::numeric_limits<int32_t>::max()-BAO_LIU_ZI_JIE_COUNT;
+	//constexpr static size_t MAX_SEND_LENGTH = std::numeric_limits<int32_t>::max()-BAO_LIU_ZI_JIE_COUNT;
 	//constexpr static size_t MAX_SEND_LENGTH = 5112660345;
 
 protected:
@@ -1980,15 +1980,6 @@ public:
 		}
 
 		auto length = (end - start) + 1;
-
-		auto v = 0;
-
-		if(length > MAX_SEND_LENGTH){
-			auto v = length - MAX_SEND_LENGTH;
-			end -= v;
-
-			length -=v;
-		}
 
 	
 
@@ -2063,9 +2054,7 @@ class  HttpResponseFileContent : public HttpResponseRangeContent{
 protected:
 	void Send_(std::shared_ptr<TcpSocket> handle, char* header, DWORD size) override {
 
-		auto length = ::Integer_cast<size_t, DWORD>(m_length);
-
-		Print("use send buffer");
+		
 		handle->Write(header, size);
 
 		
@@ -2073,7 +2062,7 @@ protected:
 		char BUF[oneSendCount];
 		MyFunc::CopyTo(
 			m_start_range,
-			length,
+			m_length,
 			oneSendCount,
 			[&file = m_file, &BUF](size_t offset, char** buf_p, uint32_t count){
 				auto i = file->Read(BUF, count, offset);
@@ -2112,46 +2101,32 @@ private:
 protected:
 	void Send_(std::shared_ptr<TcpSocket> handle, char* header, DWORD size) override {
 		
-		auto length = ::Integer_cast<size_t, DWORD>(m_length);
+		
 
-		if(length < 1024*1024*8){
-			Print("ont send to data");
-			WSABUF bufArray[2]{};
-
-			bufArray[0].buf = header;
-			bufArray[0].len = size;
-
-			bufArray[1].buf =  reinterpret_cast<char*>(m_buf->data() + m_start_range);
-			bufArray[1].len = length;
-
-			handle->Write(bufArray, 2);
-		}
-		else{
-			Print("loop send to data");
-
-			handle->Write(header, size);
-			const uint32_t oneSendCount = 65536;
+		handle->Write(header, size);
+		
+		
+		const uint32_t oneSendCount = 65536;
 			
-			//char BUF[oneSendCount];
-			MyFunc::CopyTo(
-				m_start_range,
-				length,
-				oneSendCount,	
-				[&databuf= *m_buf](size_t offset, char** buf_p, uint32_t count){
+		//char BUF[oneSendCount];
+		MyFunc::CopyTo(
+		m_start_range,
+		m_length,
+		oneSendCount,	
+		[&databuf= *m_buf](size_t offset, char** buf_p, uint32_t count){
 
-					*buf_p = (char*)(databuf.data()+offset);
+			*buf_p = (char*)(databuf.data()+offset);
 
-					//Print("run");
-					//CopyMemory(BUF, databuf.data()+offset, count);
-					
-					return count;
+			//Print("run");
+			//CopyMemory(BUF, databuf.data()+offset, count);
+			
+			return count;
 
-				},
-				[&soc= handle](char* buf, uint32_t count){
-					return soc->Write(buf, count);
-				
-				});
-		}
+		},
+		[&soc= handle](char* buf, uint32_t count){
+			return soc->Write(buf, count);
+		
+		});
 		
 	}
 public:

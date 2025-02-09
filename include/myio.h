@@ -315,8 +315,6 @@ private:
 
 	inline static LPFN_CONNECTEX s_connectex;
 
-	inline static LPFN_TRANSMITPACKETS s_transmitpackets;
-
 	static void InitializationWSA() {
 		WSADATA data;
 
@@ -330,7 +328,6 @@ private:
 
 		s_connectex = Info::GetFunctionAddress<LPFN_CONNECTEX>(WSAID_CONNECTEX);
 
-		s_transmitpackets = Info::GetFunctionAddress<LPFN_TRANSMITPACKETS>(WSAID_TRANSMITPACKETS);
 	}
 
 	
@@ -420,10 +417,6 @@ public:
 
 	static auto GetConnectEx() {
 		return s_connectex;
-	}
-
-	static auto GetTransmitPackets() {
-		return s_transmitpackets;
 	}
 };
 

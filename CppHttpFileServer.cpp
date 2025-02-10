@@ -143,7 +143,9 @@ int main(int argc, char *argv[]) {
 	std::replace(wpath.begin(), wpath.end(), L'\\', L'/');
 	Info::Initialization();
 
-
+	//之所以使用同步ACCEPT是因为当前Fiber模型
+	//每一个线程独自使用一个io完成端口
+	//侦听socket跟其中一个线程的io完成端口绑定后无法将传入的socket链接派发给其他线程
 	TcpSocketListenSync lis{};
 	
 	lis.Bind(IPEndPoint("0.0.0.0", 80));

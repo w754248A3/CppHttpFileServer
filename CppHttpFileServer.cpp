@@ -2,6 +2,8 @@
 #include "include/leikaifeng.h"
 #include "myio.h"
 #include <filesystem>
+#include <minwindef.h>
+#include <ranges>
 #include <string>
 
 
@@ -125,21 +127,61 @@ std::wstring GetExeFolder(){
 }
 
 
+struct InputArgs{
+	USHORT port;
+
+	std::wstring path;
+};
+
+
+InputArgs GetInputArgs(int argc, char *argv[]){
+	std::vector<std::wstring> vs{};
+	
+	std::ranges::for_each(std::views::counted(argv, argc), [&vs](const auto& item)->void{
+
+		vs.push_back(UTF8::GetWideCharFromMultiByte(item));
+	});
+
+	auto const windows = vs | std::views::slide(2);
+
+	InputArgs value{};
+
+	value.port=80;
+
+	value.path= GetExeFolder();
+
+
+	std::ranges::for_each(windows, [&value](const auto& item)->void{
+		USHORT port;
+		if(item[0] == L"-p" && Number::Parse(UTF8::GetUTF8ToString(item[1]), port)){
+			
+			value.port= port;
+		}
+
+		if(item[0] == L"-d"){
+			value.path= item[1];
+		}
+	});
+
+	return value;
+}
+
+
+
+
+
 
 int main(int argc, char *argv[]) {
-
-	std::wstring wpath{};
-	if(argc != 2){
-		Print("root from is exe path");
-		wpath = GetExeFolder();
-	}
-	else{
-		std::string path{argv[1]};
-
-		wpath = ::UTF8::GetWideCharFromMultiByte(path);
-	}
-
+	Print("args", "-d is folder", "-p is port");
 	
+	auto inputArgs = GetInputArgs(argc, argv);
+
+	auto wpath = inputArgs.path;
+	auto port = inputArgs.port;
+	
+	Print("path", UTF8::GetMultiByte(wpath), "port", port);
+
+
 	std::replace(wpath.begin(), wpath.end(), L'\\', L'/');
 	Info::Initialization();
 
@@ -148,7 +190,7 @@ int main(int argc, char *argv[]) {
 	//侦听socket跟其中一个线程的io完成端口绑定后无法将传入的socket链接派发给其他线程
 	TcpSocketListenSync lis{};
 	
-	lis.Bind(IPEndPoint("0.0.0.0", 80));
+	lis.Bind(IPEndPoint("0.0.0.0", port));
 	
 	lis.Listen(16);
 

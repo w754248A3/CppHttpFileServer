@@ -194,6 +194,49 @@ public:
 };
 
 
+
+
+class Number {
+public:
+	template<typename T>
+	static bool Parse(const mt::mystring_view& s, T& out_value, int base = 10) requires(std::is_same_v<T, unsigned char> || std::is_same_v<T, UINT16> || std::is_same_v<T, UINT32> || std::is_same_v<T, UINT64>)  {
+		
+		auto first = s.begin();
+		auto end = s.end();
+		auto res = std::from_chars(first, end, out_value, base);
+
+		if(res.ec != std::errc{} || res.ptr != end){
+			return false;
+		}
+		else{
+			return true;
+		}
+		
+
+	}
+
+
+	template<typename T>
+	static void ToString(mt::mystring& s, T value) requires(std::is_same_v<T, UINT16> || std::is_same_v<T, UINT32> || std::is_same_v<T, UINT64>) {
+
+		char buff[128];
+		auto res = std::to_chars(buff, buff+sizeof(buff), value, 10);
+
+		if(res.ec!=std::errc{}){
+			throw ArgumentException("ToString error");
+		}
+		else{
+			auto size = res.ptr - buff;
+			s.append(buff, static_cast<size_t>(size));
+		}
+	}
+
+
+};
+
+
+
+
 template<typename ...TS>
 class PBack {
 
@@ -1247,40 +1290,14 @@ class Url {
 			}
 	};
 
-	uint32_t static GetNumber(uint32_t value) {
-
-		constexpr uint32_t NUMBER_MAP[]{ 0,1,2,3,4,5,6,7,8,9 };
-
-		constexpr uint32_t NUMBER_FIRST = u8'0';
-
-		constexpr uint32_t NUMBER_LAST = u8'9';
-
-		constexpr uint32_t _MAP[]{ 10,11,12,13,14,15 };
-
-		constexpr uint32_t _FIRST = u8'A';
-
-		constexpr uint32_t _LAST = u8'F';
-
-		if (value >= NUMBER_FIRST && value <= NUMBER_LAST) {
-
-			return NUMBER_MAP[value - NUMBER_FIRST];
+	mt::mychar static GetCharFrom(const mt::mystring_view str) {
+		unsigned char v;
+		if(Number::Parse(str, v, 16)){
+			return (mt::mychar)v;
 		}
-		else if (value >= _FIRST && value <= _LAST) {
-
-			return _MAP[value - _FIRST];
+		else{
+			throw Error{};
 		}
-		else {
-			throw Url::Error{};
-		}
-	}
-
-	mt::mychar static GetCharFrom(const mt::mychar* buffer) {
-
-		auto value_1 = static_cast<uint32_t>(*buffer);
-
-		auto value_2 = static_cast<uint32_t>(*(buffer + 1));
-
-		return static_cast<mt::mychar>((Url::GetNumber(value_1) * 16) + Url::GetNumber(value_2));
 	}
 
 	static mt::mystring UrlDecode(const mt::mystring_view& s) {
@@ -1305,7 +1322,8 @@ class Url {
 
 				if ((index + SIZE) <= size) {
 
-					ret.push_back(Url::GetCharFrom(&buffer[index]));
+					mt::mystring_view str{&buffer[index], SIZE};
+					ret.push_back(Url::GetCharFrom(str));
 
 					index += SIZE;
 				}
@@ -1377,47 +1395,6 @@ public:
 
 
 };
-
-
-
-class Number {
-public:
-	template<typename T>
-	static bool Parse(const mt::mystring_view& s, T& out_value) requires(std::is_same_v<T, UINT16> || std::is_same_v<T, UINT32> || std::is_same_v<T, UINT64>)  {
-		
-		auto first = s.begin();
-		auto end = s.end();
-		auto res = std::from_chars(first, end, out_value, 10);
-
-		if(res.ec != std::errc{} || res.ptr != end){
-			return false;
-		}
-		else{
-			return true;
-		}
-		
-
-	}
-
-
-	template<typename T>
-	static void ToString(mt::mystring& s, T value) requires(std::is_same_v<T, UINT16> || std::is_same_v<T, UINT32> || std::is_same_v<T, UINT64>) {
-
-		char buff[128];
-		auto res = std::to_chars(buff, buff+sizeof(buff), value, 10);
-
-		if(res.ec!=std::errc{}){
-			throw ArgumentException("ToString error");
-		}
-		else{
-			auto size = res.ptr - buff;
-			s.append(buff, static_cast<size_t>(size));
-		}
-	}
-
-
-};
-
 
 
 

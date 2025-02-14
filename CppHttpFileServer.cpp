@@ -1,6 +1,7 @@
 
 #include "include/leikaifeng.h"
 #include "myio.h"
+#include <algorithm>
 #include <filesystem>
 #include <minwindef.h>
 #include <ranges>
@@ -38,14 +39,14 @@ void Response(std::shared_ptr<TcpSocket> handle, std::unique_ptr<HttpReqest>& re
 		Html html{};
 		while (eff.Get(data))
 		{
-			std::wstring name{data.Path()};
+			std::string name= UTF8::GetUTF8ToString(data.Path());
 
 			html.Add(data.IsFolder(), name, name);
 		}
 		
 
 
-		HttpResponseStrContent response{ 200,  html.GetHtml()};
+		HttpResponseStrContent response{ 200, std::move(html.GetHtml())};
 
 		response.Send(handle);
 	}

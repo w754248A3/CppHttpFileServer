@@ -1338,6 +1338,47 @@ public:
 };
 
 
+class UrlEncode{
+    
+    static bool is_valid_utf8(const std::string& str) noexcept {
+        int expected = 0;
+        for (const char s_c: str) {
+            const unsigned char c = static_cast<unsigned char>(s_c);
+            if (expected > 0) {
+                if ((c & 0xC0) != 0x80) return false;
+                --expected;
+            } else {
+                if ((c & 0x80) == 0x00) continue;
+                else if ((c & 0xE0) == 0xC0) expected = 1;
+                else if ((c & 0xF0) == 0xE0) expected = 2;
+                else if ((c & 0xF8) == 0xF0) expected = 3;
+                else return false;
+            }
+        }
+        return expected == 0;
+    }
+
+public:
+    static bool url_encode(std::string& out,  const std::string& input) {
+        if (!is_valid_utf8(input)) {
+            return false;
+        }
+
+        for (const char s_c : input) {
+            const unsigned char c = static_cast<unsigned char>(s_c);
+            char hex[10];
+            auto res = std::snprintf(hex, sizeof(hex), "%%%02X", c);
+        
+            out.append(hex, (size_t)res);
+        }
+
+        return true;
+    }
+
+
+};
+
+
 
 class Number {
 public:
@@ -1889,7 +1930,7 @@ public:
 
 	constexpr static auto HTML_TYPE = MYTEXT("text/html; charset=utf-8");
 
-	HttpResponseStrContent(size_t statusCode, const std::wstring& s) : HttpResponseStrContent(statusCode, UTF8::GetUTF8ToString(s), HTML_TYPE) {
+	HttpResponseStrContent(size_t statusCode, mt::mystring&& s) : HttpResponseStrContent(statusCode, std::move(s), HTML_TYPE) {
 
 	}
 
@@ -2289,31 +2330,33 @@ public:
 
 class Html {
 private:
-	std::wstring m_file;
+	std::string m_file;
 
-	std::wstring m_folder;
+	std::string m_folder;
 
 
-	void Add(bool isFolder, std::wstring& s, const std::wstring& path, const std::wstring& name) {
+	void Add(bool isFolder, std::string& s, const std::string& path, const std::string& name) {
 		
-		s.append(L"<li><a href=\"");
-		std::wstring encodeUrl = ::UTF8::UrlEncode(path.c_str());
-		s.append(encodeUrl);
-
+		s.append("<li><a href=\"");
+		
+		if(!UrlEncode::url_encode(s, path)){
+			throw ArgumentException("url_encode error");
+		}
+		
 		if (isFolder) {
 
-			s.append(L"/\">");
+			s.append("/\">");
 
 		}
 		else {
 
-			s.append(L"\">");
+			s.append("\">");
 
 		}
 
 		s.append(name);
 
-		s.append(L"</a></li>");
+		s.append("</a></li>");
 	}
 	
 
@@ -2323,7 +2366,7 @@ public:
 
 	}
 
-	void Add(bool isFolder,  const std::wstring& path, const std::wstring& name){
+	void Add(bool isFolder,  const std::string& path, const std::string& name){
 		if(isFolder){
 			this->Add(isFolder, m_folder, path, name);
 		}
@@ -2332,20 +2375,20 @@ public:
 		}
 	}
 
-	std::wstring GetHtml() {
+	std::string GetHtml() {
 
 	
-		std::wstring ret{};
+		std::string ret{};
 		
-		ret.append(L"<!DOCTYPE html><html lang=\"zh-cn\" xmlns=\"http://www.w3.org/1999/xhtml\"><head><meta charset=\"utf-8\" /><title>文件和文件</title></head><body><div><div><ul>");
+		ret.append("<!DOCTYPE html><html lang=\"zh-cn\" xmlns=\"http://www.w3.org/1999/xhtml\"><head><meta charset=\"utf-8\" /><title>文件和文件</title></head><body><div><div><ul>");
 		
 		ret.append(m_folder);
 		
-		ret.append(L"</ul></div><div><ul>");
+		ret.append("</ul></div><div><ul>");
 		
 		ret.append(m_file);
 		
-		ret.append(L"</ul></div></div></body></html>");
+		ret.append("</ul></div></div></body></html>");
 
 		return ret;
 	}

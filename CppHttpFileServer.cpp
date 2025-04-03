@@ -89,14 +89,6 @@ void RequestLoop(std::shared_ptr<TcpSocket> handle, std::wstring folderPath){
 	}
 }
 
-void NewAcceptAction(SOCKET s, std::wstring path){
-	auto handle = std::make_shared<TcpSocket>(s);
-
-	Fiber::GetThis().Create(RequestLoop, handle, path);
-
-}
-
-
 
 
 std::wstring GetExePath(){
@@ -186,47 +178,25 @@ int main(int argc, char *argv[]) {
 	std::replace(wpath.begin(), wpath.end(), L'\\', L'/');
 	Info::Initialization();
 
-	//之所以使用同步ACCEPT是因为当前Fiber模型
-	//每一个线程独自使用一个io完成端口
-	//侦听socket跟其中一个线程的io完成端口绑定后无法将传入的socket链接派发给其他线程
-	TcpSocketListenSync lis{};
+
+
+
+	Fiber fiber{};
+
+	fiber.Start([](USHORT port, std::wstring path){
+		TcpSocketListen lis{};
+		lis.Bind(IPEndPoint("0.0.0.0", port));
 	
-	lis.Bind(IPEndPoint("0.0.0.0", port));
-	
-	lis.Listen(16);
+		lis.Listen(16);
+		
+		while (true) {
+		
+			auto con = lis.Accept();
 
-	std::vector<Fiber*> f_v{};
+			Fiber::GetThis().Create(RequestLoop, con, path);
+		}
 
-	std::vector<std::thread> t_v{};
+	}, port, wpath);
 
-	size_t count = 3;
 
-	for (size_t i = 0; i < count; i++)
-	{
-		auto f = new Fiber{};
-
-		std::thread t{[](auto fiber){
-			fiber->Start([](){});
-			
-		}, f};
-
-		f_v.push_back(f);
-
-		t_v.push_back(std::move(t));
-	}
-	
-
-	size_t n=0;
-	while (true)
-	{
-		n++;
-
-		auto s = lis.Accept();
-
-		auto index = n% count;
-
-		f_v[index]->Create_ThreadSafe(NewAcceptAction, s, wpath);
-	}
-	
-	
 }

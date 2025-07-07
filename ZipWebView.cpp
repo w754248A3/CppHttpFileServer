@@ -3,8 +3,11 @@
 #include <boost/json/array.hpp>
 #include <boost/json/object.hpp>
 #include <boost/json/serialize.hpp>
+#include <cerrno>
 #include <exception>
+#include <filesystem>
 #include <memory>
+#include <string_view>
 #include <utility>
 #include "include/leikaifeng.h"
 #include "include/myio.h"
@@ -14,6 +17,32 @@
 class MyZipReader2 : Delete_Base{
 
 private:
+
+    std::string extract_target_content(const std::string_view& input)
+    {
+        constexpr std::string_view keyword = "password_";
+
+        // Search from the end of the string for the keyword
+        size_t pos = input.rfind(keyword);
+        if (pos == std::string::npos)
+        {
+            return ""; // Keyword not found
+        }
+        
+        size_t start = pos + keyword.length();
+
+        std::string_view remaining = std::string_view(input).substr(start);
+
+        size_t end = remaining.rfind('.');
+        if (end != std::wstring_view::npos){
+            remaining = remaining.substr(0, end);
+        }
+        
+
+
+
+        return std::string(remaining);
+    }
 
     class MyNeedData{
         public:
@@ -54,41 +83,49 @@ public:
        m_fileData = std::make_shared<std::vector<bit7z::byte_t>>();
     }
 
-    const bit7z::BitInFormat &detectRAR(const std::string &in_file)
+    const bit7z::BitInFormat &detectRAR(const std::string &in_file, const std::string &password)
     {
 
         try
         {
-            bit7z::BitArchiveReader info(m_lib, in_file, bit7z::BitFormat::Rar);
-            // if BitArchiveInfo constructor did not throw an exception, the archive is RAR (< 5.0)!
-            return bit7z::BitFormat::Rar;
+            bit7z::BitArchiveReader info(m_lib, in_file, bit7z::BitFormat::Rar5, password);
+          
+            return bit7z::BitFormat::Rar5;
         }
         catch (const bit7z::BitException &)
         {
-            /* the archive is not a RAR and if it is not even a RAR5,
-               the following line will throw an exception (not catched)! */
-            bit7z::BitArchiveReader info(m_lib, in_file, bit7z::BitFormat::Rar5);
-            return bit7z::BitFormat::Rar5;
+           
+            bit7z::BitArchiveReader info(m_lib, in_file, bit7z::BitFormat::Rar, password);
+            return bit7z::BitFormat::Rar;
         }
     }
 
     void OpenFile(const std::wstring& path, const bit7z::BitInFormat& format){
-        auto fv = &format;
-        auto u8path =  bit7z::to_tstring(path);
-        if((*fv) == bit7z::BitFormat::Rar){
-             fv = &detectRAR(u8path);
-        }
-
-
         if(path == m_path){
             return;
         }
 
         m_path= path;
+        
+
+        
+        auto fv = &format;
+        auto u8path =  bit7z::to_tstring(path);
+
+        const auto password = extract_target_content(u8path);
+
+        Print("password:", password);
+        if((*fv) == bit7z::BitFormat::Rar){
+             fv = &detectRAR(u8path, password);
+        }
+
+
+        
 
         m_arc = std::make_unique<bit7z::BitArchiveReader>(m_lib, 
         u8path, 
-        *fv);
+        *fv,
+        password);
         
         m_data.clear();
         m_fileData = std::make_shared<std::vector<bit7z::byte_t>>();

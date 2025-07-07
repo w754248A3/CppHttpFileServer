@@ -220,6 +220,8 @@ void Response2(std::shared_ptr<TcpSocket> handle, std::unique_ptr<HttpReqest>& r
     auto isjsonstr = request->GetQueryValue(MYTEXT("json"));
 
     if(isjsonstr == MYTEXT("1")){
+
+        Print("is file json");
         boost::json::array vs{};
 
         reader->GetFileNameAndIndex([&vs](uint32_t index, const std::string& name){
@@ -248,14 +250,14 @@ void Response2(std::shared_ptr<TcpSocket> handle, std::unique_ptr<HttpReqest>& r
 
     if(indexstring == MYTEXT("")){
          Html html {};
-
+        Print("is file html");
         reader->GetFileNameAndIndex([&html](uint32_t index, const std::string& name){
 
-            mt::mystring path{};
+            mt::mystring path {"?Index="};
             Number::ToString(path, index);
-            auto wpath = UTF8::GetWideCharFromUTF8(path);
-            wpath.insert(0, L"?Index=");
-            html.Add(false, wpath, UTF8::GetWideCharFromUTF8( name));
+            
+            
+            html.Add(false, path, name);
 
         });
 
@@ -302,7 +304,7 @@ void Response(std::shared_ptr<TcpSocket> handle, std::unique_ptr<HttpReqest>& re
 	
 	auto path = UTF8::GetWideCharFromUTF8(request->GetPath());
 
-    
+    Print("path:", UTF8::GetMultiByte(path));
     if(path.starts_with(L"/app")){
         path = appPath +path.substr(4);
 
@@ -333,13 +335,13 @@ void Response(std::shared_ptr<TcpSocket> handle, std::unique_ptr<HttpReqest>& re
 	auto isff = File::IsFileOrFolder(path);
 
 	if (isff.IsFile()) {
-
+        Print("is file");
         Response2(handle, request, reader, path);
 		
 
 	}
 	else if (isff.IsFolder()) {
-		
+		Print("IsFolder");
 		if (path.ends_with(L'/')) {
 			path += L'*';
 		}
@@ -355,6 +357,7 @@ void Response(std::shared_ptr<TcpSocket> handle, std::unique_ptr<HttpReqest>& re
         auto isjsonstr = request->GetQueryValue(MYTEXT("json"));
 
         if(isjsonstr == MYTEXT("1")){
+            Print("IsFolder json");
             boost::json::array vs{};
 
 
@@ -384,13 +387,15 @@ void Response(std::shared_ptr<TcpSocket> handle, std::unique_ptr<HttpReqest>& re
         }
 
 
-
+        Print("IsFolder html");
 		Html html{};
 		while (eff.Get(data))
 		{
-			std::wstring name{data.Path()};
+			std::string name= UTF8::GetUTF8ToString(data.Path());
 
-			html.Add(data.IsFolder(), name, name);
+
+
+			html.Add(data.IsFolder(),  name, name);
 		}
 		
 

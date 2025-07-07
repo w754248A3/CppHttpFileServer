@@ -1376,6 +1376,13 @@ class UrlEncode{
         return expected == 0;
     }
 
+
+	static bool is_no_need_encode(char c){
+		return c == '/' || c == '?' || c =='&' || c=='=' || c =='.' ||
+		(c >= 'a' && c <= 'z')||
+		(c >= 'A' && c <= 'Z');
+	}
+
 public:
     static bool url_encode(std::string& out,  const std::string& input) {
         if (!is_valid_utf8(input)) {
@@ -1383,11 +1390,21 @@ public:
         }
 
         for (const char s_c : input) {
-            const unsigned char c = static_cast<unsigned char>(s_c);
-            char hex[10];
-            auto res = std::snprintf(hex, sizeof(hex), "%%%02X", c);
-        
-            out.append(hex, (size_t)res);
+            
+
+			if(is_no_need_encode(s_c)){
+				
+				out.push_back(s_c);
+				
+			}
+			else{
+				const unsigned char c = static_cast<unsigned char>(s_c);
+				char hex[10];
+				auto res = std::snprintf(hex, sizeof(hex), "%%%02X", c);
+			
+				out.append(hex, (size_t)res);
+			}
+            
         }
 
         return true;
@@ -1845,7 +1862,15 @@ public:
 
 		decltype(auto) map = Info::GetContentTypeMap();
 
-		auto item = map.find(s);
+		auto sv = s;
+
+		for (wchar_t& ch : sv) {
+			if (ch >= L'A' && ch <= L'Z') {
+				ch = ch + (L'a' - L'A');
+			}
+    	}
+
+		auto item = map.find(sv);
 
 		m_header.append(MYTEXT("Content-Type: "));
 

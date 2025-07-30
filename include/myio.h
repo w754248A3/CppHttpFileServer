@@ -1820,6 +1820,9 @@ public:
 		if(statusCode == 404){
 			m_header.append(MYTEXT(" Not Found\r\n"));
 		}
+		else if(statusCode == 206){
+			m_header.append(MYTEXT(" Partial Content\r\n"));
+		}
 		else{
 			m_header.append(MYTEXT(" OK\r\n"));
 		}
@@ -1829,7 +1832,7 @@ public:
 	}
 
 	void SetContentRange(size_t start, size_t end, size_t size) {
-		
+		m_header.append(MYTEXT("Accept-Ranges: bytes\r\n"));
 		m_header.append(MYTEXT("Content-Range: bytes "));
 		
 		Number::ToString(m_header, start);

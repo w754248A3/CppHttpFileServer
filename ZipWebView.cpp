@@ -4,6 +4,7 @@
 #include <boost/json/object.hpp>
 #include <boost/json/serialize.hpp>
 #include <cerrno>
+#include <cstddef>
 #include <exception>
 #include <filesystem>
 #include <memory>
@@ -50,13 +51,17 @@ private:
             size_t size;
             std::string path;
             std::string exname;
+            std::shared_ptr<std::vector<byte>> fileData;
+            size_t count;
         MyNeedData(uint32_t index,
             size_t size,
             std::string path,
             std::string exname):
             index(index), size(size),
             path(std::move(path)),
-            exname(std::move(exname)){
+            exname(std::move(exname)),
+            fileData(),
+            count(0){
 
             }
     };
@@ -68,19 +73,17 @@ private:
     std::unique_ptr<bit7z::BitArchiveReader> m_arc;
 
     std::unordered_map<uint32_t, MyNeedData> m_data; 
-    std::shared_ptr<std::vector<byte>> m_fileData;
-    size_t m_upIndex;
+    
 public:
     //初始化的顺序很重要
     MyZipReader2(const std::wstring& dllPath):
      m_lib(bit7z::to_tstring(dllPath)),
      m_path(),
      m_arc(),
-     m_data(),
-     m_fileData(),
-     m_upIndex(MAXINDEX)
+     m_data()
+   
     {
-       m_fileData = std::make_shared<std::vector<bit7z::byte_t>>();
+       
     }
 
     const bit7z::BitInFormat &detectRAR(const std::string &in_file, const std::string &password)
@@ -128,7 +131,7 @@ public:
         password);
         
         m_data.clear();
-        m_fileData = std::make_shared<std::vector<bit7z::byte_t>>();
+      
         try{
             auto arc_items = m_arc->items();
             for (auto &item : arc_items)
@@ -164,6 +167,42 @@ public:
 
     }
 
+    // 估算可分配的最大内存（物理内存和虚拟地址空间的最小值 * 保守估算%）
+    size_t GetMaxAllocatablePhysicalMemory()
+    {
+        MEMORYSTATUSEX memInfo = {};
+        memInfo.dwLength = sizeof(MEMORYSTATUSEX);
+        if (!GlobalMemoryStatusEx(&memInfo)) {
+            return 0;
+        }
+
+        ULONGLONG availPhys = memInfo.ullAvailPhys;
+        ULONGLONG availVirtual = memInfo.ullAvailVirtual;
+        ULONGLONG limit = (availPhys < availVirtual) ? availPhys : availVirtual;
+
+        return static_cast<size_t>(static_cast<double>( limit) * 0.7); // 保守估算
+    }
+
+    void TryCanNeedRemove(MyNeedData& data){
+
+        auto v = GetMaxAllocatablePhysicalMemory();
+
+        if(data.size< v){
+            return;
+        }
+        
+
+        for (auto& item : m_data) {
+            
+
+            item.second.fileData = nullptr;
+
+            item.second.count=0;
+            
+        }
+
+    }
+
     bool GetBytes(uint32_t index, std::shared_ptr<std::vector<bit7z::byte_t>>& fileData, std::string& exname){
         
         auto v = m_data.find(index);
@@ -173,22 +212,26 @@ public:
             return false;
         }
 
-        exname = v->second.exname;
+        MyNeedData& data = v->second;
 
-        if(m_upIndex == index){
-            fileData = m_fileData;
-
+        exname = data.exname;
+        
+        if(data.count != 0){
+            fileData =data.fileData;
+            data.count+=1;
             return true;
         }
 
-        m_upIndex=index;
+        TryCanNeedRemove(data);
 
-        m_fileData = std::make_shared<std::vector<bit7z::byte_t>>();
+
+        data.fileData = std::make_shared<std::vector<bit7z::byte_t>>();
         try{
             
-            m_arc->extractTo(*m_fileData, ::Integer_cast<size_t, uint32_t>(index));
+            m_arc->extractTo(*data.fileData, ::Integer_cast<size_t, uint32_t>(index));
             
-            fileData= m_fileData;
+            fileData= data.fileData;
+            data.count=1;
             return true;
         }
         catch (const bit7z::BitException &ex)

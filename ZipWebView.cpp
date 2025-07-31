@@ -288,8 +288,11 @@ void Response2(std::shared_ptr<TcpSocket> handle, std::unique_ptr<HttpReqest>& r
     const bit7z::BitInFormat* v;
 
     if(!GetBitInFormat(filePath, &v)){
-        HttpResponse404 res404{};
-        res404.Send(handle);
+        HttpResponseFileContent response{filePath };
+		
+		response.SetRangeFromRequest(*request);
+
+		response.Send(handle);
 
         return;
     }

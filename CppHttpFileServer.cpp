@@ -6,6 +6,7 @@
 #include <minwindef.h>
 #include <ranges>
 #include <string>
+#include <utility>
 
 
 void Response(std::shared_ptr<TcpSocket> handle, std::unique_ptr<HttpReqest>& request, std::wstring& folderPath){
@@ -40,19 +41,15 @@ void Response(std::shared_ptr<TcpSocket> handle, std::unique_ptr<HttpReqest>& re
 			html.Add(data.IsFolder(), name, name);
 		}
 		
+		auto htmlStr = html.GetHtml();
 
+		ResponseFunc::SendHtmlContent(htmlStr, handle);
 
-		HttpResponseStrContent response{ 200, std::move(html.GetHtml())};
-
-		response.Send(handle);
 	}
 	else {
 		Print("path error   ", ::UTF8::GetMultiByte(path));
 		
-		HttpResponse404 response{};
-
-
-		response.Send(handle);
+		ResponseFunc::Send404(handle);
 	}
 }
 

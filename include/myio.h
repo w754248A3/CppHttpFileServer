@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include <_mingw_stat64.h>
 #include <charconv>
 #include <cstddef>
 #include <cstdint>
@@ -1380,7 +1381,8 @@ class UrlEncode{
 	static bool is_no_need_encode(char c){
 		return c == '/' || c == '?' || c =='&' || c=='=' || c =='.' ||
 		(c >= 'a' && c <= 'z')||
-		(c >= 'A' && c <= 'Z');
+		(c >= 'A' && c <= 'Z')||
+		(c >= '0' && c <= '9');
 	}
 
 public:
@@ -2039,7 +2041,7 @@ public:
 			});
 	}
 
-	static void Send(std::wstring filePath, std::shared_ptr<TcpSocket> handle, const HttpReqest& request){
+	static void Send(const std::wstring& filePath, std::shared_ptr<TcpSocket> handle, const HttpReqest& request){
 		
 		CreateReadOnlyFile fileHandle{filePath};
 		const auto fileSize = Integer_cast<LONGLONG, size_t>(fileHandle.GetSize());
@@ -2093,6 +2095,48 @@ public:
 
 	}
 
+
+	static void SendStringContent(mt::mystring& content, std::shared_ptr<TcpSocket> handle, const mt::mystring& contentType) {
+		
+		mt::mystring m_header{};
+		m_header.reserve(1024);
+
+		m_header.append(MYTEXT("HTTP/1.1 200 OK\r\n"));
+
+		ResponseFunc::SetContentLength(m_header, content.size());
+
+		ResponseFunc::SetPublicHeader(m_header);
+
+		m_header.append(MYTEXT("Content-Type: ")).append(contentType).append(MYTEXT("\r\n"));
+
+		ResponseFunc::SendHeader(handle, m_header);
+
+		handle->Write(reinterpret_cast<char*>(content.data()), ::Integer_cast<size_t, DWORD>(content.size()));
+	}
+
+	static void SendJsonContent(mt::mystring& content, std::shared_ptr<TcpSocket> handle) {
+		ResponseFunc::SendStringContent(content, handle, MYTEXT("application/json"));
+	}
+
+	static void SendHtmlContent(mt::mystring& content, std::shared_ptr<TcpSocket> handle) {
+		ResponseFunc::SendStringContent(content, handle, MYTEXT("text/html; charset=utf-8"));
+	}
+
+	static void Send404(std::shared_ptr<TcpSocket> handle) {
+		
+		mt::mystring m_header{};
+		m_header.reserve(1024);
+
+		m_header.append(MYTEXT("HTTP/1.1 404 Not Found\r\n"));
+
+		ResponseFunc::SetContentLength(m_header, 0);
+
+		ResponseFunc::SetPublicHeader(m_header);
+
+		ResponseFunc::SendHeader(handle, m_header);
+	}
+
+	
 };
 
 

@@ -289,7 +289,7 @@ void Response2(std::shared_ptr<TcpSocket> handle, std::unique_ptr<HttpReqest>& r
 
     if(!GetBitInFormat(filePath, &v)){
        
-        ResponseFunc::Send(filePath, handle, *request);
+        ResponseFunc::SendFile(filePath, handle, *request);
 
 
         return;
@@ -383,7 +383,7 @@ void Response(std::shared_ptr<TcpSocket> handle, std::unique_ptr<HttpReqest>& re
 
         if(File::IsFileOrFolder(path).IsFile()){
            
-            ResponseFunc::Send (path, handle, *request);
+            ResponseFunc::SendFile(path, handle, *request);
 
 
         }

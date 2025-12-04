@@ -17,11 +17,7 @@ void Response(std::shared_ptr<TcpSocket> handle, std::unique_ptr<HttpReqest>& re
 
 	if (isff.IsFile()) {
 
-		HttpResponseFileContent response{path };
-		
-		response.SetRangeFromRequest(*request);
-
-		response.Send(handle);
+		ResponseFunc::Send(path, handle, *request);
 
 
 	}

@@ -1910,6 +1910,192 @@ public:
 	}
 };
 
+
+class ResponseFunc{
+public:
+
+	static std::wstring GetName(const std::wstring& path) {
+		auto index = path.rfind(L'.');
+
+		if (index == std::remove_reference_t< decltype(path)>::npos) {
+			return std::wstring{};
+		}
+		else {
+			return path.substr(index, path.size() - index);
+		}
+	}
+
+	static void SetContentLength(mt::mystring& header, size_t size) {
+		header.append(MYTEXT("Content-Length: "));
+
+		Number::ToString(header, size);
+
+		header.append(MYTEXT("\r\n"));
+	}
+
+	static void SetContentRange(mt::mystring& header, size_t start, size_t end, size_t size) {
+		
+		header.append(MYTEXT("Content-Range: bytes "));
+		
+		Number::ToString(header, start);
+		
+		header.push_back(u8'-');
+		
+		Number::ToString(header, end);
+
+		header.push_back(u8'/');
+
+		Number::ToString(header, size);
+
+		header.append(MYTEXT("\r\n"));
+	}
+
+
+	static size_t CheckRangeReturnLength(mt::mystring& header, size_t start, size_t end, size_t fileSize) {
+
+		if(end >= fileSize){
+			throw ArgumentException{"request set renge end > fileSize"};
+		}
+
+		if(start> end){
+			throw ArgumentException{"request set renge start > end"};
+		}
+
+		auto length = (end - start) + 1;
+
+	
+		
+		ResponseFunc::SetContentRange(header, start, end, fileSize);
+
+		return length;
+	}
+
+	static void SetContentType(mt::mystring& m_header, const std::wstring& s) {
+
+		decltype(auto) map = Info::GetContentTypeMap();
+
+		auto sv = s;
+
+		for (wchar_t& ch : sv) {
+			if (ch >= L'A' && ch <= L'Z') {
+				ch = ch + (L'a' - L'A');
+			}
+    	}
+
+		auto item = map.find(sv);
+
+		m_header.append(MYTEXT("Content-Type: "));
+
+		if (item == map.end()) {
+			m_header.append(MYTEXT("application/octet-stream"));
+		}
+		else {
+
+			m_header.append(item->second);
+
+		}
+
+		m_header.append(MYTEXT("\r\n"));
+	}
+
+	static void SetPublicHeader(mt::mystring& m_header ) {
+		m_header.append(MYTEXT("Connection: keep-alive\r\n"));
+		m_header.append(MYTEXT("Keep-Alive: timeout=20, max=1000\r\n"));
+	}
+
+	static void SetRangeAcceptedHeader(mt::mystring& m_header) {
+		m_header.append(MYTEXT("Accept-Ranges: bytes\r\n"));
+	}
+
+	static void SendHeader(std::shared_ptr<TcpSocket> handle, mt::mystring& header) {
+		
+		
+		header.append(MYTEXT("\r\n"));
+		
+		auto buf = reinterpret_cast<char*>(header.data());
+
+		auto size = ::Integer_cast<size_t, DWORD>(header.size());
+
+		handle->Write(buf, size);
+	}
+
+	static void LoopSendFile(std::shared_ptr<TcpSocket> handle, CreateReadOnlyFile& fileHandle, size_t start_range, size_t length) {
+		
+		const uint32_t oneSendCount= 65536;
+		char BUF[oneSendCount];
+		MyFunc::CopyTo(
+			start_range,
+			length,
+			oneSendCount,
+			[&file = fileHandle, &BUF](size_t offset, char** buf_p, uint32_t count){
+				auto i = file.Read(BUF, count, offset);
+
+				*buf_p=BUF;
+
+				return i;
+			},
+			[&handle](char* buf, uint32_t count){
+				return handle->Write(buf, count);
+			});
+	}
+
+	static void Send(std::wstring filePath, std::shared_ptr<TcpSocket> handle, const HttpReqest& request){
+		
+		CreateReadOnlyFile fileHandle{filePath};
+		const auto fileSize = Integer_cast<LONGLONG, size_t>(fileHandle.GetSize());
+		
+		const auto fileExName = GetName(filePath);
+
+		mt::mystring m_header{};
+		m_header.reserve(1024);
+
+		m_header.append(MYTEXT("HTTP/1.1 "));
+
+		std::pair<size_t, std::pair<bool, size_t>> range;
+		
+		if(request.GetRange(range)){
+			m_header.append(MYTEXT("206 Partial Content\r\n"));
+		
+			size_t start_range = range.first;
+			size_t length = range.second.first?
+				ResponseFunc::CheckRangeReturnLength(m_header, range.first, range.second.second, fileSize):
+				ResponseFunc::CheckRangeReturnLength(m_header, range.first, fileSize - 1, fileSize);
+
+			ResponseFunc::SetContentLength(m_header, length);
+			ResponseFunc::SetContentType( m_header, fileExName);
+			ResponseFunc::SetRangeAcceptedHeader(m_header);
+			ResponseFunc::SetPublicHeader(m_header);
+	
+			ResponseFunc::SendHeader(handle, m_header);
+
+			ResponseFunc::LoopSendFile(handle, fileHandle, start_range, length);
+
+		}
+		else{
+			m_header.append(MYTEXT("200 OK\r\n"));
+
+			size_t start_range = 0;
+
+			size_t length = fileSize;
+
+			ResponseFunc::SetContentLength(m_header, length);
+
+			ResponseFunc::SetPublicHeader(m_header);
+
+			ResponseFunc::SetContentType( m_header, fileExName);
+
+			ResponseFunc::SetRangeAcceptedHeader(m_header);
+
+
+			ResponseFunc::SendHeader(handle, m_header);
+			ResponseFunc::LoopSendFile(handle, fileHandle, start_range, length);
+		}
+
+	}
+
+};
+
+
 class HttpResponseStrContent : public HttpResponse {
 
 	mt::mystring m_str;

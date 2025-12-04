@@ -2041,6 +2041,31 @@ public:
 			});
 	}
 
+	static void LoopSendBuffer(std::shared_ptr<TcpSocket> handle, std::shared_ptr<std::vector<byte>> buf, size_t start_range, size_t length) {
+		
+		const uint32_t oneSendCount = 65536;
+			
+		//char BUF[oneSendCount];
+		MyFunc::CopyTo(
+		start_range,
+		length,
+		oneSendCount,	
+		[&databuf= *buf](size_t offset, char** buf_p, uint32_t count){
+
+			*buf_p = (char*)(databuf.data()+offset);
+
+			//Print("run");
+			//CopyMemory(BUF, databuf.data()+offset, count);
+			
+			return count;
+
+		},
+		[&soc= handle](char* buf, uint32_t count){
+			return soc->Write(buf, count);
+		
+		});
+	}
+
 	static void Send(const std::wstring& filePath, std::shared_ptr<TcpSocket> handle, const HttpReqest& request){
 		
 		CreateReadOnlyFile fileHandle{filePath};
@@ -2095,6 +2120,57 @@ public:
 
 	}
 
+	static void SendBuffer(const std::wstring& fileExName,std::shared_ptr<std::vector<byte>> buf, std::shared_ptr<TcpSocket> handle, const HttpReqest& request){
+		
+	
+		const auto fileSize = buf->size();
+		
+		mt::mystring m_header{};
+		m_header.reserve(1024);
+
+		m_header.append(MYTEXT("HTTP/1.1 "));
+
+		std::pair<size_t, std::pair<bool, size_t>> range;
+		
+		if(request.GetRange(range)){
+			m_header.append(MYTEXT("206 Partial Content\r\n"));
+		
+			size_t start_range = range.first;
+			size_t length = range.second.first?
+				ResponseFunc::CheckRangeReturnLength(m_header, range.first, range.second.second, fileSize):
+				ResponseFunc::CheckRangeReturnLength(m_header, range.first, fileSize - 1, fileSize);
+
+			ResponseFunc::SetContentLength(m_header, length);
+			ResponseFunc::SetContentType( m_header, fileExName);
+			ResponseFunc::SetRangeAcceptedHeader(m_header);
+			ResponseFunc::SetPublicHeader(m_header);
+	
+			ResponseFunc::SendHeader(handle, m_header);
+
+			ResponseFunc::LoopSendBuffer(handle, buf, start_range, length);
+
+		}
+		else{
+			m_header.append(MYTEXT("200 OK\r\n"));
+
+			size_t start_range = 0;
+
+			size_t length = fileSize;
+
+			ResponseFunc::SetContentLength(m_header, length);
+
+			ResponseFunc::SetPublicHeader(m_header);
+
+			ResponseFunc::SetContentType( m_header, fileExName);
+
+			ResponseFunc::SetRangeAcceptedHeader(m_header);
+
+
+			ResponseFunc::SendHeader(handle, m_header);
+			ResponseFunc::LoopSendBuffer(handle, buf, start_range, length);
+		}
+
+	}
 
 	static void SendStringContent(mt::mystring& content, std::shared_ptr<TcpSocket> handle, const mt::mystring& contentType) {
 		

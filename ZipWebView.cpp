@@ -288,11 +288,9 @@ void Response2(std::shared_ptr<TcpSocket> handle, std::unique_ptr<HttpReqest>& r
     const bit7z::BitInFormat* v;
 
     if(!GetBitInFormat(filePath, &v)){
-        HttpResponseFileContent response{filePath };
-		
-		response.SetRangeFromRequest(*request);
+       
+        ResponseFunc::Send(filePath, handle, *request);
 
-		response.Send(handle);
 
         return;
     }
@@ -319,10 +317,8 @@ void Response2(std::shared_ptr<TcpSocket> handle, std::unique_ptr<HttpReqest>& r
 
         });
         auto cont = boost::json::serialize(vs);
-        HttpResponseStrContent strcont{200, std::move(cont), HttpResponseStrContent::JSON_TYPE};
-
-
-        strcont.Send(handle);
+      
+        ResponseFunc::SendJsonContent( cont, handle);
 
         return;
     }
@@ -344,11 +340,10 @@ void Response2(std::shared_ptr<TcpSocket> handle, std::unique_ptr<HttpReqest>& r
 
         });
 
+        auto htmlStr = html.GetHtml();
+        ResponseFunc::SendHtmlContent( htmlStr, handle);
 
-        HttpResponseStrContent strcont{200, html.GetHtml()};
-
-
-        strcont.Send(handle);
+        
 
         return;
     }
@@ -357,8 +352,7 @@ void Response2(std::shared_ptr<TcpSocket> handle, std::unique_ptr<HttpReqest>& r
   
     if(!Number::Parse(indexstring, index)){
 
-        HttpResponse404 res404{};
-        res404.Send(handle);
+        ResponseFunc::Send404(handle);
 
         return;
     }
@@ -368,17 +362,13 @@ void Response2(std::shared_ptr<TcpSocket> handle, std::unique_ptr<HttpReqest>& r
     std::string exname{};
     std::shared_ptr<std::vector<bit7z::byte_t>> buf{};
     if(!reader->GetBytes(static_cast<uint32_t>(index), buf, exname)){
-        HttpResponse404 res404{};
-        res404.Send(handle);
+        ResponseFunc::Send404(handle);
 
         return;
     }
     exname.insert(0, ".");
 
-   
-    HttpResponseBufferContent resbuf{UTF8::GetWideCharFromUTF8(exname), buf};
-    resbuf.SetRangeFromRequest(*request);
-    resbuf.Send(handle);
+    ResponseFunc::SendBuffer(UTF8::GetWideCharFromUTF8(exname), buf, handle, *request);
 }
 
 
@@ -392,18 +382,14 @@ void Response(std::shared_ptr<TcpSocket> handle, std::unique_ptr<HttpReqest>& re
         path = appPath +path.substr(4);
 
         if(File::IsFileOrFolder(path).IsFile()){
-            
-		    HttpResponseFileContent response{ path };
-            
-            response.SetRangeFromRequest(*request);
+           
+            ResponseFunc::Send (path, handle, *request);
 
-            response.Send(handle);
 
         }
         else{
 
-            HttpResponse404 res404{};
-            res404.Send(handle);
+            ResponseFunc::Send404(handle);
 
         }
 
@@ -459,8 +445,10 @@ void Response(std::shared_ptr<TcpSocket> handle, std::unique_ptr<HttpReqest>& re
 
             {
                 auto cont = boost::json::serialize(vs);
-                HttpResponseStrContent strcont{200, std::move(cont), HttpResponseStrContent::JSON_TYPE};
-                strcont.Send(handle);
+             
+                ResponseFunc::SendJsonContent ( cont, handle);
+
+
             }
             
 
@@ -483,17 +471,15 @@ void Response(std::shared_ptr<TcpSocket> handle, std::unique_ptr<HttpReqest>& re
 		
 
 
-		HttpResponseStrContent response{ 200,  html.GetHtml()};
+        auto htmlStr =  html.GetHtml();
+        ResponseFunc::SendHtmlContent(htmlStr, handle);
 
-		response.Send(handle);
+
 	}
 	else {
 		Print("path error   ", ::UTF8::GetMultiByte(path));
 		
-		HttpResponse404 response{};
-
-
-		response.Send(handle);
+		ResponseFunc::Send404(handle);
 	}
 }
 

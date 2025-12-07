@@ -5,6 +5,7 @@
 #include <exception>
 #include <functional>
 #include <minwindef.h>
+#include <span>
 #include <string_view>
 #include <system_error>
 #include <winnt.h>
@@ -306,6 +307,93 @@ enum class IOPortFlag : ULONG_PTR {
 
 class Fiber;
 
+
+class HttpHeaderMap{
+
+	public:
+
+	enum Headers {
+
+		Range,
+		ContentType,
+		ContentLength,
+		Connection,
+
+
+
+	};
+
+	static auto& GetHttpHeaderMap() {
+
+		static std::unordered_map<mt::mystring_view, HttpHeaderMap::Headers> map{};
+
+		return map;
+	}
+
+	static auto to_lower(mt::mystring_view source, std::span<char, 64>  dest) {
+
+		if(source.size()> dest.size()){
+			throw ArgumentException("to_lower dest size is small");
+		}
+
+		for (mt::mystring_view::size_type i = 0;i < source.size(); i++ ) {
+			
+			if(source[i] >= 'A' && source[i] <= 'Z'){
+				dest[i] = static_cast<char>(source[i] + 32);
+			}
+			else{
+				dest[i] = source[i];
+			}
+
+		}
+
+		return mt::mystring_view{ dest.data(), source.size() };
+
+		
+	}
+
+	static void Set(std::unordered_map<HttpHeaderMap::Headers, mt::mystring_view>& dic, mt::mystring_view key, mt::mystring_view value){
+
+		decltype(auto) map = GetHttpHeaderMap();
+
+		std::array<char, 64> buf{};
+
+		auto low_key = to_lower(key,buf);
+
+		auto iter = map.find(low_key);
+
+		if(iter != map.end()){
+
+			dic.emplace(iter->second, value);
+			
+		}
+		else{
+			
+		}
+
+	}
+
+	static void InitializationMap() {
+
+		decltype(auto) map = GetHttpHeaderMap();
+
+
+		map.emplace(MYTEXT("range"), HttpHeaderMap::Headers::Range);
+		map.emplace(MYTEXT("content-type"), HttpHeaderMap::Headers::ContentType);
+		map.emplace(MYTEXT("content-length"), HttpHeaderMap::Headers::ContentLength);
+		map.emplace(MYTEXT("connection"), HttpHeaderMap::Headers::Connection);
+
+		
+	}
+
+
+
+
+};
+
+
+
+
 class Info {
 
 public:
@@ -441,6 +529,8 @@ public:
 		Info::InitializationWSA();
 
 		Info::InitializationMap();
+
+		HttpHeaderMap::InitializationMap();
 
 		auto& v = IsCallInitialization();
 
@@ -1451,7 +1541,7 @@ private:
 
 	mt::mystring m_path;
 	
-	std::unordered_map<mt::mystring_view, mt::mystring_view> m_dic;
+	std::unordered_map<HttpHeaderMap::Headers, mt::mystring_view> m_dic;
 	std::unordered_map<mt::mystring_view, mt::mystring_view> m_queryArgs;
 
 
@@ -1552,7 +1642,9 @@ private:
 		}
 	}
 
-	static void AddDic(std::unordered_map<mt::mystring_view, mt::mystring_view>& dic, mt::mystring_view s) {
+	
+
+	static void AddDic(std::unordered_map<HttpHeaderMap::Headers, mt::mystring_view>& dic, mt::mystring_view s) {
 		
 		auto index = s.find(MYTEXT(":"));
 
@@ -1566,7 +1658,8 @@ private:
 			key = TrimSpans(key);
 			auto value = s.substr(index+1);
 			value = TrimSpans(value);
-			dic.emplace(key, value);
+			HttpHeaderMap::Set(dic, key, value);
+			
 		}
 	}
 
@@ -1707,7 +1800,7 @@ public:
 		return m_path;
 	}
 
-	mt::mystring GetValue(const mt::mystring& key){
+	mt::mystring GetValue(HttpHeaderMap::Headers key) {
 		
 		decltype(auto) dic = this->GetDic();
 
@@ -1739,12 +1832,11 @@ public:
 
 	bool GetRange(std::pair<size_t, std::pair<bool, size_t>>& out_value) const {
 		
-		mt::mystring key{ MYTEXT("Range") };
-
+		
 
 		decltype(auto) dic = this->GetDic();
 
-		auto item = dic.find(key);
+		auto item = dic.find(HttpHeaderMap::Headers::Range);
 
 		
 		if (item == dic.end()) {
@@ -1805,7 +1897,7 @@ public:
 		}
 
 		
-		//Print(::UTF8::GetMultiByte(::UTF8::GetWideChar(mt::mystring{ view})));
+		Print(::UTF8::GetMultiByte(::UTF8::GetWideCharFromUTF8(mt::mystring{ view})));
 		mt::mystring_view value{};
 		
 		if (!HttpReqest::Find(view, value)) {
@@ -1932,7 +2024,7 @@ private:
 		
 		
 		header.append(MYTEXT("\r\n"));
-		
+		Print(::UTF8::GetMultiByte(::UTF8::GetWideCharFromUTF8(mt::mystring{ header})));
 		auto buf = reinterpret_cast<char*>(header.data());
 
 		auto size = ::Integer_cast<size_t, DWORD>(header.size());

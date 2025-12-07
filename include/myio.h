@@ -1,5 +1,4 @@
 ﻿#pragma once
-#include <_mingw_stat64.h>
 #include <charconv>
 #include <cstddef>
 #include <cstdint>
@@ -1424,19 +1423,24 @@ class HttpReqest : Delete_Base {
 public:
 	class FormatException : public std::exception {
 
-	std::string m_message;
-public:
+		std::string m_message;
+	public:
 
-	FormatException(std::string message) :m_message(message){
+		FormatException(std::string message) :m_message(message){
 
-	}
+		}
 
 
-	const char* what() const noexcept override {
-		return m_message.c_str();
-	}
-};
+		const char* what() const noexcept override {
+			return m_message.c_str();
+		}
+	};
 
+
+	enum Method {
+		GET,
+		HEAD,
+	};
 private:
 	constexpr static size_t BUFFER_SIZE = 4096;
 
@@ -1449,7 +1453,24 @@ private:
 	
 	std::unordered_map<mt::mystring_view, mt::mystring_view> m_dic;
 	std::unordered_map<mt::mystring_view, mt::mystring_view> m_queryArgs;
-	static mt::mystring Path(mt::mystring_view s) {
+
+
+	Method m_method;
+
+	static Method ParseMethod(mt::mystring_view s) {
+
+		if (s == MYTEXT("GET")) {
+			return Method::GET;
+		}
+		else if (s == MYTEXT("HEAD")) {
+			return Method::HEAD;
+		}
+		else {
+			throw HttpReqest::FormatException{"find method error"};
+		}
+	}
+
+	static void ParsePathAndMethod(mt::mystring_view s, mt::mystring& out_path, Method& out_method) {
 
 		auto first = s.find(u8' ');
 
@@ -1457,14 +1478,19 @@ private:
 
 		if (first != decltype(s)::npos && first != last) {
 
+			auto method_str = s.substr(0, first);
+
+
+			out_method = ParseMethod(method_str);
+
 			s.remove_suffix(s.size() - last);
 
 			s.remove_prefix(first + 1);
 
 			mt::mystring ret{};
-
 			if (Url::UrlDecode(s, ret)) {
-				return ret;
+				out_path = ret;
+				return;
 			}
 			else {
 				throw HttpReqest::FormatException{"url decode error"};
@@ -1673,6 +1699,10 @@ public:
 		return m_dic;
 	}
 
+	auto& GetMethod() const {
+		return m_method;
+	}
+
 	auto& GetPath() const {
 		return m_path;
 	}
@@ -1786,7 +1816,7 @@ public:
 			//Print(::UTF8::GetMultiByte(::UTF8::GetWideChar(mt::mystring{ value})));
 			//path = HttpReqest::Path(value);
 			
-			firstLine = HttpReqest::Path(value);
+			HttpReqest::ParsePathAndMethod (value, firstLine, ret->m_method);
 
 			auto pathview = ParseQuery(firstLine, queryArgs);
 
@@ -1959,6 +1989,8 @@ public:
 
 	static void SendFile(const std::wstring& filePath, std::shared_ptr<TcpSocket> handle, const HttpReqest& request){
 		
+		bool isHeadMethod = request.GetMethod() == HttpReqest::Method::HEAD;
+
 		CreateReadOnlyFile fileHandle{filePath};
 		const auto fileSize = Integer_cast<LONGLONG, size_t>(fileHandle.GetSize());
 		
@@ -1985,7 +2017,10 @@ public:
 			ResponseFunc::SetPublicHeader(m_header);
 	
 			ResponseFunc::SendHeader(handle, m_header);
-
+			if(isHeadMethod){
+				return;
+			}
+			
 			ResponseFunc::LoopSendFile(handle, fileHandle, start_range, length);
 
 		}
@@ -2006,6 +2041,11 @@ public:
 
 
 			ResponseFunc::SendHeader(handle, m_header);
+
+			if(isHeadMethod){
+				return;
+			}
+			
 			ResponseFunc::LoopSendFile(handle, fileHandle, start_range, length);
 		}
 

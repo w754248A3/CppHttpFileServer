@@ -18,7 +18,7 @@ void Response(std::shared_ptr<TcpSocket> handle, std::unique_ptr<HttpReqest>& re
 
 	if (isff.IsFile()) {
 
-		ResponseFunc::Send(path, handle, *request);
+		ResponseFunc::SendFile (path, handle, *request);
 
 
 	}

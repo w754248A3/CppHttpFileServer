@@ -4,6 +4,7 @@
 #include <boost/json/object.hpp>
 #include <boost/json/serialize.hpp>
 #include <cerrno>
+#include <cmath>
 #include <cstddef>
 #include <exception>
 #include <filesystem>
@@ -289,7 +290,12 @@ void Response2(std::shared_ptr<TcpSocket> handle, std::unique_ptr<HttpReqest>& r
 
     if(!GetBitInFormat(filePath, &v)){
        
-        ResponseFunc::SendFile(filePath, handle, *request);
+
+        auto isjsonstr = request->GetQueryValue(MYTEXT("ib"));
+
+        auto b= isjsonstr == MYTEXT("1");
+
+        ResponseFunc::SendFile(filePath, handle, *request, b);
 
 
         return;
@@ -383,7 +389,7 @@ void Response(std::shared_ptr<TcpSocket> handle, std::unique_ptr<HttpReqest>& re
 
         if(File::IsFileOrFolder(path).IsFile()){
            
-            ResponseFunc::SendFile(path, handle, *request);
+            ResponseFunc::SendFile(path, handle, *request, false);
 
 
         }

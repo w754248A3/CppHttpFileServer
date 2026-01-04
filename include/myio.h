@@ -1897,7 +1897,7 @@ public:
 		}
 
 		
-		Print(::UTF8::GetMultiByte(::UTF8::GetWideCharFromUTF8(mt::mystring{ view})));
+		//Print(::UTF8::GetMultiByte(::UTF8::GetWideCharFromUTF8(mt::mystring{ view})));
 		mt::mystring_view value{};
 		
 		if (!HttpReqest::Find(view, value)) {
@@ -2024,7 +2024,7 @@ private:
 		
 		
 		header.append(MYTEXT("\r\n"));
-		Print(::UTF8::GetMultiByte(::UTF8::GetWideCharFromUTF8(mt::mystring{ header})));
+		//Print(::UTF8::GetMultiByte(::UTF8::GetWideCharFromUTF8(mt::mystring{ header})));
 		auto buf = reinterpret_cast<char*>(header.data());
 
 		auto size = ::Integer_cast<size_t, DWORD>(header.size());
@@ -2032,7 +2032,8 @@ private:
 		handle->Write(buf, size);
 	}
 
-	static void LoopSendFile(std::shared_ptr<TcpSocket> handle, CreateReadOnlyFile& fileHandle, size_t start_range, size_t length) {
+	
+	static void LoopSendFile(std::shared_ptr<TcpSocket> handle, CreateReadOnlyFile& fileHandle, size_t start_range, size_t length, bool is_Inverted_bits) {
 		
 		const uint32_t oneSendCount= 65536;
 		char BUF[oneSendCount];
@@ -2040,8 +2041,15 @@ private:
 			start_range,
 			length,
 			oneSendCount,
-			[&file = fileHandle, &BUF](size_t offset, char** buf_p, uint32_t count){
+			[&file = fileHandle, &BUF, &is_Inverted_bits](size_t offset, char** buf_p, uint32_t count){
 				auto i = file.Read(BUF, count, offset);
+
+				if(is_Inverted_bits){
+
+					for (decltype(i) index = 0; index < i; index++) {
+						BUF[index] = static_cast<char>(~(static_cast<uint8_t>(BUF[index])));
+					}
+				}
 
 				*buf_p=BUF;
 
@@ -2079,7 +2087,7 @@ private:
 
 public:
 
-	static void SendFile(const std::wstring& filePath, std::shared_ptr<TcpSocket> handle, const HttpReqest& request){
+	static void SendFile(const std::wstring& filePath, std::shared_ptr<TcpSocket> handle, const HttpReqest& request, bool is_Inverted_bits){
 		
 		bool isHeadMethod = request.GetMethod() == HttpReqest::Method::HEAD;
 
@@ -2113,7 +2121,7 @@ public:
 				return;
 			}
 			
-			ResponseFunc::LoopSendFile(handle, fileHandle, start_range, length);
+			ResponseFunc::LoopSendFile(handle, fileHandle, start_range, length, is_Inverted_bits);
 
 		}
 		else{
@@ -2138,7 +2146,7 @@ public:
 				return;
 			}
 			
-			ResponseFunc::LoopSendFile(handle, fileHandle, start_range, length);
+			ResponseFunc::LoopSendFile(handle, fileHandle, start_range, length, is_Inverted_bits);
 		}
 
 	}

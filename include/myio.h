@@ -67,8 +67,8 @@ TOut Integer_cast(TIn v){
 }
 
 
-void WSAExit(const std::string& message) {
-	Exit(message, WSAGetLastError());
+void WSAExit(const std::wstring& message) {
+	MyWin32Out::MyWin32Out::Exit(message, WSAGetLastError());
 }
 
 
@@ -104,7 +104,7 @@ public:
 			uint32_t redCount = readfunc(readOffset, &buf, count);
 
 			if(redCount ==0 || buf==nullptr){
-				Print("file loop read 0");
+				
 				return;
 			}
 
@@ -135,7 +135,7 @@ public:
 			auto redCount = readfunc(buf.get(), SIZEBUFF, offset);
 
 			if(redCount ==0){
-				Print("file loop read 0");
+				
 				return;
 			}
 			DWORD canSendCount =0;
@@ -164,7 +164,7 @@ class Win32SocketException : public Win32SysteamException {
 public:
 	using Win32SysteamException::Win32SysteamException;
 
-	Win32SocketException(const std::string& message) : Win32SysteamException(message, (DWORD)WSAGetLastError()) {
+	Win32SocketException(const std::wstring& message) : Win32SysteamException(message, (DWORD)WSAGetLastError()) {
 
 	}
 };
@@ -401,9 +401,9 @@ public:
 		auto handle = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
 		if (handle == INVALID_SOCKET) {
-			WSAExit("create socket error");
+			WSAExit(L"create socket error");
 
-			throw Win32SocketException{};
+			return handle;
 		}
 		else {
 			return handle;
@@ -431,9 +431,9 @@ private:
 
 
 		if (result == SOCKET_ERROR) {
-			WSAExit("get function address error");
+			WSAExit(L"get function address error");
 
-			throw Win32SocketException{};
+			return functionAddress;
 		}
 		else {
 			return functionAddress;
@@ -452,7 +452,7 @@ private:
 		auto value = WSAStartup(MAKEWORD(2, 2), &data);
 
 		if (value != 0) {
-			Exit("Initialization error", value);
+			MyWin32Out::MyWin32Out::Exit(L"Initialization error", value);
 		}
 
 		s_acceptex = Info::GetFunctionAddress<LPFN_ACCEPTEX>(WSAID_ACCEPTEX);
@@ -614,7 +614,7 @@ public:
 	static Fiber& GetThis(){
 
 		if(s_value == nullptr){
-			Exit("fiber * is null");
+			MyWin32Out::Exit(L"fiber * is null");
 		}
 
 		return *s_value;
@@ -651,9 +651,9 @@ private:
 		auto handle = ::CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr, 0, 0);
 
 		if (handle == nullptr) {
-			Exit("create Io Completion Port error");
+			MyWin32Out::Exit(L"create Io Completion Port error");
 
-			throw Win32SysteamException{};
+			return handle;
 		}
 		else {
 			return handle;
@@ -690,20 +690,21 @@ private:
 			p->Call();
 		}
 		catch (Win32SocketException& e) {
-			Print("fiber throw socket throw");
+			MyWin32Out::Print(L"fiber throw socket throw");
 
-			Exit(e.what());
+			MyWin32Out::Exit(e.what());
 		}
 		catch (Win32SysteamException& e) {
-			Print("fiber throw system throw");
-			Exit(e.what());
+			MyWin32Out::Print(L"fiber throw system throw");
+			MyWin32Out::Exit(e.what());
 		}
 		catch (std::exception& e) {
-			Print("fiber throw exception throw");
-			Exit(e.what());
+			MyWin32Out::Print(L"fiber throw exception throw");
+			auto s = UTF8::GetWideCharFromUTF8(e.what());
+			MyWin32Out::Exit(s);
 		}
 		catch (...) {
-			Exit("fiber throw error");
+			MyWin32Out::Exit(L"fiber throw error");
 		}
 		
 	}
@@ -746,13 +747,13 @@ public:
 	void AddToIoCompletionPort(HANDLE fileHandle) {
 		auto handle = ::CreateIoCompletionPort(fileHandle, m_io_over_port, static_cast<ULONG_PTR>(IOPortFlag::FiberSwitch), 0);
 		if (handle == nullptr) {
-			Exit("add Io Completion Port error");
+			MyWin32Out::Exit(L"add Io Completion Port error");
 		}
 	}
 
 	void PostToIoCompletionPort(IOPortFlag flag, LPVOID value) {
 		if (0 == ::PostQueuedCompletionStatus(m_io_over_port, 0, static_cast<ULONG_PTR>(flag), static_cast<LPOVERLAPPED>(value))) {
-			Exit("post io Completion Port error");
+			MyWin32Out::Exit(L"post io Completion Port error");
 		}
 	}
 
@@ -762,7 +763,7 @@ public:
 		auto handle = ::ConvertThreadToFiberEx(nullptr, FIBER_FLAG_FLOAT_SWITCH);
 
 		if (handle == nullptr) {
-			Exit("Convert To Fiber Error");
+			MyWin32Out::Exit(L"Convert To Fiber Error");
 		}
 		else {
 			m_main_fiber = handle;
@@ -808,7 +809,7 @@ public:
 			handle = ::CreateFiberEx(0, 0, FIBER_FLAG_FLOAT_SWITCH, Fiber::Fiber_Func, nullptr);
 
 			if (handle == nullptr) {
-				Exit("Create Fiber Error");
+				MyWin32Out::Exit(L"Create Fiber Error");
 			}
 		}
 		
@@ -826,7 +827,7 @@ public:
 
 	void Switch(LPVOID fiber) {
 		if (fiber == GetCurrentFiber()) {
-			Exit("Switch Fiber error");
+			MyWin32Out::Exit(L"Switch Fiber error");
 		}
 
 		::SwitchToFiber(fiber);
@@ -834,7 +835,7 @@ public:
 
 	void Delete(LPVOID fiber) {
 		if (fiber == m_main_fiber) {
-			Exit("delete fiber error");
+			MyWin32Out::Exit(L"delete fiber error");
 
 		}
 
@@ -846,7 +847,7 @@ public:
 	{
 		
 		if(Info::IsCallInitialization() == false){
-			Exit("can not call Initialization");
+			MyWin32Out::Exit(L"can not call Initialization");
 		}
 
 		Fiber::s_value= this;
@@ -854,7 +855,7 @@ public:
 		Fiber::Convert();
 
 		if(Fiber::s_value != this){
-			Exit("convert fiber thread local data not eq");
+			MyWin32Out::Exit(L"convert fiber thread local data not eq");
 		}
 
 		Fiber::Create(func, value...);
@@ -871,7 +872,7 @@ public:
 			
 			if (TRUE !=res)
 			{
-				Exit("get io error");
+				MyWin32Out::Exit(L"get io error");
 			}
 			else
 			{
@@ -905,7 +906,7 @@ public:
 						delete p;
 					}
 					else{
-						Exit("can not define Fiber flag");
+						MyWin32Out::Exit(L"can not define Fiber flag");
 					}
 				}
 			}
@@ -924,7 +925,9 @@ public:
 		m_handle = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_FLAG_OVERLAPPED | FILE_FLAG_SEQUENTIAL_SCAN, nullptr);
 
 		if (m_handle == INVALID_HANDLE_VALUE) {
-			throw Win32SysteamException{};
+			auto error = GetLastError();
+			throw Win32SysteamException{L"CreateReadOnlyFile", error};
+		
 		}
 		Fiber::GetThis().AddToIoCompletionPort(reinterpret_cast<HANDLE>(m_handle));
 	}
@@ -935,7 +938,8 @@ public:
 			return size.QuadPart;
 		}
 		else {
-			throw Win32SysteamException{};
+			auto error = GetLastError();
+			throw Win32SysteamException{L"GetSize", error};
 		}
 	}
 
@@ -957,7 +961,8 @@ public:
 		auto ret = ::ReadFile(m_handle, buf, size, nullptr, &overlapped);
 		auto e = GetLastError();
 		if(ret != 0 || e != ERROR_IO_PENDING){
-			throw Win32SysteamException{"read file error:", e};
+			
+			throw Win32SysteamException{L"read file error:", e};
 		}
 
 		Fiber::GetThis().SwitchMain();
@@ -976,7 +981,7 @@ public:
 			}
 			else {
 
-				throw Win32SocketException{ "Read file over error:", e };
+				throw Win32SocketException{L"Read file over error:", e };
 			}
 		}
 
@@ -1017,7 +1022,7 @@ class TcpSocket : Delete_Base {
 		auto ret = WSARecv(m_handle, &buf, 1, nullptr, &flag, &overlapped, nullptr);
 		auto e = WSAGetLastError();
 		if (ret != 0 && e != WSA_IO_PENDING) {
-			throw Win32SocketException{ static_cast<DWORD>(e) };
+			throw Win32SocketException{ L"Read WSARecv", static_cast<DWORD>(e) };
 		}
 
 		Fiber::GetThis().SwitchMain();
@@ -1030,8 +1035,8 @@ class TcpSocket : Delete_Base {
 			return static_cast<ULONG>(count);
 		}
 		else {
-
-			throw Win32SocketException{ "Read" };
+			auto e = WSAGetLastError();
+			throw Win32SocketException{ L"Read", static_cast<DWORD>(e) };
 		}
 
 	}
@@ -1073,7 +1078,7 @@ public:
 		auto e = WSAGetLastError();
 		
 		if (ret != 0 && e != WSA_IO_PENDING) {
-			throw Win32SocketException{ static_cast<DWORD>(e) };
+			throw Win32SocketException{L"WSASend", static_cast<DWORD>(e) };
 		}
 		
 		Fiber::GetThis().SwitchMain();
@@ -1087,8 +1092,8 @@ public:
 			return static_cast<ULONG>(count);
 		}
 		else {
-
-			throw Win32SocketException{ "Write send error:", static_cast<DWORD>(WSAGetLastError())};
+			auto e = WSAGetLastError();
+			throw Win32SocketException{ L"Write send error:", static_cast<DWORD>(e)};
 		}
 	}
 
@@ -1115,7 +1120,7 @@ public:
 
 		if (SOCKET_ERROR == ::bind(handle, reinterpret_cast<sockaddr*>(&address), sizeof(address))) {
 			
-			throw Win32SocketException{ "bind" };
+			throw Win32SocketException{ L"bind" };
 		}
 	}
 
@@ -1132,14 +1137,14 @@ public:
 		overlapped.other = GetCurrentFiber();
 		
 		if (TRUE == Info::GetConnectEx()(handle->GetHandle(), reinterpret_cast<sockaddr*>(&address), sizeof(address), nullptr, 0, nullptr, &overlapped)) {
-			WSAExit("connect 同步完成");
-			throw Win32SocketException{ "connect 同步完成"};
+			WSAExit(L"connect 同步完成");
+			throw Win32SocketException{L"connect 同步完成"};
 		}
 		else {
 			auto value = WSAGetLastError();
 
 			if (value != ERROR_IO_PENDING) {
-				throw Win32SocketException{ static_cast<DWORD>(value) };
+				throw Win32SocketException{L"GetConnectEx", static_cast<DWORD>(value) };
 			}
 			else {
 				Fiber::GetThis().SwitchMain();
@@ -1154,7 +1159,7 @@ public:
 				}
 				else {
 
-					throw Win32SocketException{ "Connect"};
+					throw Win32SocketException{ L"Connect"};
 				}
 			}
 		}
@@ -1169,7 +1174,7 @@ public:
 
 	void OnClose_Throw(){
 		if(is_close){
-			throw Win32SocketException{"socket is close can not use"};
+			throw Win32SocketException{L"socket is close can not use"};
 		}
 	}
 
@@ -1183,7 +1188,7 @@ public:
 			auto isok = ::closesocket(m_handle);
 
 			if(isok == SOCKET_ERROR){
-				WSAExit("close socker error");
+				WSAExit(L"close socker error");
 			}
 			
 		}
@@ -1207,7 +1212,7 @@ class TcpSocketListen : Delete_Base {
 		
 		if (SOCKET_ERROR == setsockopt(des, SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT, reinterpret_cast<char*>(&source), sizeof(source)))
 		{
-			WSAExit("Copy Options error");
+			WSAExit(L"Copy Options error");
 		}
 	}
 
@@ -1235,7 +1240,7 @@ public:
 			throw Win32SocketException{ "set KEEPALIVE opt error", WSAGetLastError() };
 		}
 		else{
-			Print("set KEEPALIVE opt ok");
+			MyWin32Out::Print("set KEEPALIVE opt ok");
 		}
 	}
  */
@@ -1243,7 +1248,7 @@ public:
 	void Listen(int backlog) {
 		if (SOCKET_ERROR == ::listen(m_handle, backlog)) {
 			
-			throw Win32SocketException{ "listen" };
+			throw Win32SocketException{ L"listen" };
 		}
 	}
 
@@ -1265,15 +1270,15 @@ public:
 		overlapped.other = GetCurrentFiber();
 		
 		if (TRUE == Info::GetAcceptEx()(m_handle, handle->GetHandle(), buffer, 0, ADDRESSLENGTH, ADDRESSLENGTH, &length, &overlapped)) {
-			WSAExit("accept syn over");
+			WSAExit(L"accept syn over");
 
-			throw Win32SocketException{};
+			throw Win32SocketException{L"GetAcceptEx",};
 		}
 		else {
 			auto value = WSAGetLastError();
 
 			if (value != ERROR_IO_PENDING) {
-				throw Win32SocketException{ static_cast<DWORD>(value) };
+				throw Win32SocketException{L"GetAcceptEx", static_cast<DWORD>(value) };
 			}
 			else {
 				Fiber::GetThis().SwitchMain();
@@ -1291,7 +1296,7 @@ public:
 				}
 				else {
 					
-					throw Win32SocketException{ "Accpet" };
+					throw Win32SocketException{ L"Accpet" };
 				}	
 			}	
 		}
@@ -1311,7 +1316,7 @@ public:
 		}
 		else
 		{
-			Print("get SO_KEEPALIVE opt value:", v);
+			MyWin32Out::Print("get SO_KEEPALIVE opt value:", v);
 		}
 
 		return handle;
@@ -1345,7 +1350,7 @@ public:
 	void Listen(int backlog) {
 		if (SOCKET_ERROR == ::listen(m_handle, backlog)) {
 			
-			throw Win32SocketException{ "listen" };
+			throw Win32SocketException{ L"listen" };
 		}
 	}
 
@@ -1357,7 +1362,7 @@ public:
 
         if (connct == INVALID_SOCKET)
         {
-            Exit("accept socket error", WSAGetLastError());
+            MyWin32Out::Exit(L"accept socket error", WSAGetLastError());
         }
 
 		return connct;
@@ -1897,7 +1902,7 @@ public:
 		}
 
 		
-		//Print(::UTF8::GetMultiByte(::UTF8::GetWideCharFromUTF8(mt::mystring{ view})));
+		//MyWin32Out::Print(::UTF8::GetMultiByte(::UTF8::GetWideCharFromUTF8(mt::mystring{ view})));
 		mt::mystring_view value{};
 		
 		if (!HttpReqest::Find(view, value)) {
@@ -1905,7 +1910,7 @@ public:
 			throw HttpReqest::FormatException{"find header line error length:"};
 		}
 		else {
-			//Print(::UTF8::GetMultiByte(::UTF8::GetWideChar(mt::mystring{ value})));
+			//MyWin32Out::Print(::UTF8::GetMultiByte(::UTF8::GetWideChar(mt::mystring{ value})));
 			//path = HttpReqest::Path(value);
 			
 			HttpReqest::ParsePathAndMethod (value, firstLine, ret->m_method);
@@ -2024,7 +2029,7 @@ private:
 		
 		
 		header.append(MYTEXT("\r\n"));
-		//Print(::UTF8::GetMultiByte(::UTF8::GetWideCharFromUTF8(mt::mystring{ header})));
+		//MyWin32Out::Print(::UTF8::GetMultiByte(::UTF8::GetWideCharFromUTF8(mt::mystring{ header})));
 		auto buf = reinterpret_cast<char*>(header.data());
 
 		auto size = ::Integer_cast<size_t, DWORD>(header.size());
@@ -2073,7 +2078,7 @@ private:
 
 			*buf_p = (char*)(databuf.data()+offset);
 
-			//Print("run");
+			//MyWin32Out::Print("run");
 			//CopyMemory(BUF, databuf.data()+offset, count);
 			
 			return count;
@@ -2301,7 +2306,8 @@ private:
 			return false;
 		}
 		else {
-			throw Win32SysteamException{ error };
+	
+			throw Win32SysteamException{ L"EnumFileFolder",error };
 		}
 
 	}
@@ -2383,7 +2389,7 @@ public:
 				return IsFileIsFolder{ false, false };
 			}
 			else {
-				throw Win32SysteamException{ e };
+				throw Win32SysteamException{L"IsFileOrFolder", e };
 			}
 		}
 		else {

@@ -2065,26 +2065,35 @@ private:
 			});
 	}
 
-	static void LoopSendBuffer(std::shared_ptr<TcpSocket> handle, std::shared_ptr<std::vector<byte>> buf, size_t start_range, size_t length) {
+	static void LoopSendBuffer(std::shared_ptr<TcpSocket> handle, std::shared_ptr<std::vector<byte>> buf, size_t start_range, size_t length, bool is_Inverted_bits) {
 		
 		const uint32_t oneSendCount = 65536;
 			
-		//char BUF[oneSendCount];
+		char BUF[oneSendCount];
 		MyFunc::CopyTo(
 		start_range,
 		length,
 		oneSendCount,	
-		[&databuf= *buf](size_t offset, char** buf_p, uint32_t count){
-
-			*buf_p = (char*)(databuf.data()+offset);
+		[&databuf= *buf, &BUF](size_t offset, char** buf_p, uint32_t count){
 
 			//MyWin32Out::Print("run");
-			//CopyMemory(BUF, databuf.data()+offset, count);
+			CopyMemory(BUF, databuf.data()+offset, count);
 			
+			*buf_p= BUF;
+
 			return count;
 
 		},
-		[&soc= handle](char* buf, uint32_t count){
+		[&soc= handle, &is_Inverted_bits](char* buf, uint32_t count){
+			
+			
+			if(is_Inverted_bits){
+
+				for (decltype(count) index = 0; index < count; index++) {
+					buf[index] = static_cast<char>(~(static_cast<uint8_t>(buf[index])));
+				}
+			}
+			
 			return soc->Write(buf, count);
 		
 		});
@@ -2156,7 +2165,7 @@ public:
 
 	}
 
-	static void SendBuffer(const std::wstring& fileExName,std::shared_ptr<std::vector<byte>> buf, std::shared_ptr<TcpSocket> handle, const HttpReqest& request){
+	static void SendBuffer(const std::wstring& fileExName,std::shared_ptr<std::vector<byte>> buf, std::shared_ptr<TcpSocket> handle, const HttpReqest& request, bool is_Inverted_bits){
 		
 	
 		const auto fileSize = buf->size();
@@ -2183,7 +2192,7 @@ public:
 	
 			ResponseFunc::SendHeader(handle, m_header);
 
-			ResponseFunc::LoopSendBuffer(handle, buf, start_range, length);
+			ResponseFunc::LoopSendBuffer(handle, buf, start_range, length, is_Inverted_bits);
 
 		}
 		else{
@@ -2203,7 +2212,7 @@ public:
 
 
 			ResponseFunc::SendHeader(handle, m_header);
-			ResponseFunc::LoopSendBuffer(handle, buf, start_range, length);
+			ResponseFunc::LoopSendBuffer(handle, buf, start_range, length, is_Inverted_bits);
 		}
 
 	}

@@ -34,21 +34,7 @@
 #include <wininet.h>
 #include <mstcpip.h>
 #include "leikaifeng.h"
-
-#define MYTEXT(args) args
-
-namespace mt {
-
-
-using mystring = std::string;
-
-using mystring_view= std::string_view;
-
-using mychar = char;
-}
-
-
-
+#include "myserverapi.h"
 
 
 
@@ -2481,4 +2467,5 @@ public:
 	}
 
 };
+
 #endif // !_MYIO

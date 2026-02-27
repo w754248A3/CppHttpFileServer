@@ -1,88 +1,15 @@
 
 #include "include/leikaifeng.h"
-#include "myio.h"
+#include "include/myserverapi.h"
 #include <algorithm>
 #include <filesystem>
 #include <minwindef.h>
 #include <ranges>
 #include <string>
+#include <system_error>
 #include <utility>
 #include <fcntl.h>  // _O_U16TEXT
 #include <io.h>     // _setmode
-
-void Response(std::shared_ptr<TcpSocket> handle, std::unique_ptr<HttpReqest>& request, std::wstring& folderPath){
-	
-	auto path = UTF8::GetWideCharFromUTF8(request->GetPath());
-	path =  folderPath + path;
-	
-	auto isff = File::IsFileOrFolder(path);
-
-	if (isff.IsFile()) {
-
-		ResponseFunc::SendFile (path, handle, *request, false);
-
-
-	}
-	else if (isff.IsFolder()) {
-		
-		if (path.ends_with(L'/')) {
-			path += L'*';
-		}
-		else {
-			path += L"/*";
-		}
-	
-		EnumFileFolder eff{path};
-		EnumFileFolder::Data data{};
-		Html html{};
-		while (eff.Get(data))
-		{
-			std::string name= UTF8::GetUTF8FromWideChar(data.Path());
-
-			html.Add(data.IsFolder(), name, name);
-		}
-		
-		auto htmlStr = html.GetHtml();
-
-		ResponseFunc::SendHtmlContent(htmlStr, handle);
-
-	}
-	else {
-		MyWin32Out::Print(L"path error   ", path);
-		
-		ResponseFunc::Send404(handle);
-	}
-}
-
-
-void RequestLoop(std::shared_ptr<TcpSocket> handle, std::wstring folderPath){
-
-	
-	try {
-		int n = 0;
-
-		while (true)
-		{
-
-			auto request = HttpReqest::Read(handle);
-			
-			Response(handle, request, folderPath);
-			n++;
-
-			MyWin32Out::Print(n, L"re use link");
-		}
-	}
-	catch (Win32SysteamException& e) {
-		MyWin32Out::Print(e.what()); 
-	}
-	catch (HttpReqest::FormatException& e) {
-		MyWin32Out::Print(L"request format error:", UTF8::GetWideCharFromUTF8(e.what()));
-	}
-	catch (::SystemException& e) {
-		MyWin32Out::Print(L"SystemException :",UTF8::GetWideCharFromUTF8(e.what()));
-	}
-}
-
 
 
 std::wstring GetExePath(){
@@ -140,9 +67,20 @@ InputArgs GetInputArgs(int argc, wchar_t* argv[]){
 
 	std::ranges::for_each(windows, [&value](const auto& item)->void{
 		USHORT port;
-		if(item[0] == L"-p" && Number::Parse(UTF8::GetUTF8FromWideChar(item[1]), port)){
+
+
+		if(item[0] == L"-p"){
 			
-			value.port= port;
+			auto u8 = UTF8::GetUTF8FromWideChar(item[1]);
+
+			auto res = std::from_chars(u8.data(), u8.data() + u8.size(), port);
+
+			if(res.ec == std::errc{}){
+				value.port= port;
+			}
+		
+
+			
 		}
 
 		if(item[0] == L"-d"){
@@ -160,8 +98,8 @@ InputArgs GetInputArgs(int argc, wchar_t* argv[]){
 
 int wmain(int argc, wchar_t* argv[]) {
 	
-	 _setmode(_fileno(stdin), _O_U16TEXT);
-     _setmode(_fileno(stdout), _O_U16TEXT);
+	_setmode(_fileno(stdin), _O_U16TEXT);
+	_setmode(_fileno(stdout), _O_U16TEXT);
     _setmode(_fileno(stderr), _O_U16TEXT);
 
 
@@ -176,27 +114,35 @@ int wmain(int argc, wchar_t* argv[]) {
 
 
 	std::replace(wpath.begin(), wpath.end(), L'\\', L'/');
-	Info::Initialization();
 
 
+	RunServer rs{};
 
 
-	Fiber fiber{};
+	rs.Routing([](const mt::mystring& path){
+		return true;
+	},
+	[&folderPath= wpath](RequestResponseAPI& p){
 
-	fiber.Start([](USHORT port, std::wstring path){
-		TcpSocketListen lis{};
-		lis.Bind(IPEndPoint("0.0.0.0", port));
+		auto& path = p.GetPath();
+		auto req_wpath = UTF8::GetWideCharFromUTF8(path);
+
+		auto all_wpath = folderPath  +req_wpath;
+		MyWin32Out::Print(all_wpath);
+		auto is_folder_file = p.IsFileOrFolder(all_wpath);
 	
-		lis.Listen(16);
-		
-		while (true) {
-		
-			auto con = lis.Accept();
-
-			Fiber::GetThis().Create(RequestLoop, con, path);
+		if(is_folder_file==1){
+			p.SendFile(all_wpath,false);
 		}
+		else if(is_folder_file==2){
+			p.SendFolderHtmlPage(all_wpath);
+		}
+		else{
+			p.Send404();
+		}
+	});
 
-	}, port, wpath);
+	rs.Run(port);
 
 	return 0;
 }

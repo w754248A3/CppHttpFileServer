@@ -77,7 +77,7 @@ my_set_common_properties(ZipWebView)
 my_set_target_out(ZipWebView)
 
 
-add_executable(CppHttpFileServer ./CppHttpFileServer.cpp)
+add_executable(CppHttpFileServer ./leikaifeng.cpp ./myserverapi.cpp ./CppHttpFileServer.cpp)
 
 
 my_set_common_properties(CppHttpFileServer)

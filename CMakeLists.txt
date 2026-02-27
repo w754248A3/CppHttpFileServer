@@ -68,7 +68,7 @@ function(my_set_target_out targetname)
 endfunction()
 
 
-add_executable(ZipWebView ./ZipWebView.cpp)
+add_executable(ZipWebView ./leikaifeng.cpp ./myserverapi.cpp ./ZipWebView.cpp)
 
 
 my_set_common_properties(ZipWebView)

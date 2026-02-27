@@ -31,8 +31,6 @@ struct RunServer::RunServerData{
 
 void Response(RunServer::RunServerData* sd, std::shared_ptr<TcpSocket> handle, HttpReqest* request){
 
-    auto&  path = request->GetPath();
-
     RequestResponseAPI rr{std::make_unique<RequestResponseAPI::RequestResponseData>(request, handle)};
 
     
@@ -46,7 +44,7 @@ void Response(RunServer::RunServerData* sd, std::shared_ptr<TcpSocket> handle, H
     for (decltype(is_func_vs.size()) n = 0; n < is_func_vs.size(); n++) {
         auto& is_func = is_func_vs[n];
 
-        if(is_func(path)){
+        if(is_func(rr)){
 
             auto& func = func_vs[n];
 
@@ -183,7 +181,7 @@ void RequestResponseAPI::ForeachFile(const std::wstring& path, std::function<voi
         path2 += L"/*";
     }
 
-    EnumFileFolder eff{path};
+    EnumFileFolder eff{path2};
     EnumFileFolder::Data data{};
   
     while (eff.Get(data))

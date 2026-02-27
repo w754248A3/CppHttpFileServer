@@ -23,7 +23,7 @@ using mychar = char;
 
 using byte = unsigned char;
 
-using RoutIsFunc =std::function<bool(const mt::mystring&)>;
+using RoutIsFunc =std::function<bool(RequestResponseAPI&)>;
 
 using RoutFunc = std::function<void(RequestResponseAPI&)>;
 }

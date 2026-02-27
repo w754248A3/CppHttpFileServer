@@ -38,21 +38,6 @@
 
 
 
-template<typename TIn, typename TOut>
-TOut Integer_cast(TIn v){
-	
-	if(std::cmp_greater(v, std::numeric_limits<TOut>::max()) 
-	|| std::cmp_less(v, std::numeric_limits<TOut>::min())){
-			throw std::overflow_error("Integer_cast Overflow");
-	}
-	else{
-		return static_cast<TOut>(v);
-	}
-	
-	
-}
-
-
 void WSAExit(const std::wstring& message) {
 	MyWin32Out::MyWin32Out::Exit(message, WSAGetLastError());
 }
@@ -912,7 +897,7 @@ public:
 
 		if (m_handle == INVALID_HANDLE_VALUE) {
 			auto error = GetLastError();
-			throw Win32SysteamException{L"CreateReadOnlyFile", error};
+			throw Win32SysteamException{L"CreateReadOnlyFile:"+path, error};
 		
 		}
 		Fiber::GetThis().AddToIoCompletionPort(reinterpret_cast<HANDLE>(m_handle));

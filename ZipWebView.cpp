@@ -6,7 +6,6 @@
 #include <cerrno>
 #include <cmath>
 #include <cstddef>
-#include <exception>
 #include <filesystem>
 #include <memory>
 #include <minwindef.h>
@@ -14,8 +13,7 @@
 #include <string_view>
 #include <utility>
 #include "include/leikaifeng.h"
-#include "include/myio.h"
-#include "myio.h"
+#include "include/myserverapi.h"
 #include <fcntl.h>  // _O_U16TEXT
 #include <io.h>     // _setmode
 
@@ -288,13 +286,38 @@ bool GetBitInFormat(const std::wstring& filePath, bit7z::BitInFormat const * * v
     
 }
 
-void Response2(std::shared_ptr<TcpSocket> handle, std::unique_ptr<HttpReqest>& request, std::shared_ptr<MyZipReader2> reader, std::wstring& filePath){
-	
+void StaticFileRouting(RequestResponseAPI& p, const std::wstring& folderPath){
+    
+    auto& path = p.GetPath();
+    auto req_wpath = UTF8::GetWideCharFromUTF8(path);
+
+    auto all_wpath = folderPath  +req_wpath.substr(4);
+    MyWin32Out::Print(L"/app path  ",all_wpath);
+    auto is_folder_file = p.IsFileOrFolder(all_wpath);
+
+    if(is_folder_file==1){
+        p.SendFile(all_wpath,false);
+    }
+    else{
+        p.Send404();
+    }
+}
+
+bool ParseNumber(const mt::mystring& s, size_t& n){
+    auto res = std::from_chars(s.data(), s.data() + s.size(), n);
+
+    return  res.ec == std::errc{};
+		
+}
+
+
+void FileRouting2(RequestResponseAPI& p, const std::wstring& filePath, std::shared_ptr<MyZipReader2> reader){
+    
 
     bool is_Inverted_bits = false;
 
     {
-        auto isjsonstr = request->GetQueryValue(MYTEXT("ib"));
+        auto isjsonstr = p.GetQueryValue(MYTEXT("ib"));
 
         is_Inverted_bits = isjsonstr == MYTEXT("1");
     }
@@ -302,12 +325,8 @@ void Response2(std::shared_ptr<TcpSocket> handle, std::unique_ptr<HttpReqest>& r
     const bit7z::BitInFormat* v;
 
     if(!GetBitInFormat(filePath, &v)){
-       
 
-        
-
-        ResponseFunc::SendFile(filePath, handle, *request, is_Inverted_bits);
-
+        p.SendFile(filePath, is_Inverted_bits);
 
         return;
     }
@@ -315,7 +334,7 @@ void Response2(std::shared_ptr<TcpSocket> handle, std::unique_ptr<HttpReqest>& r
 
     reader->OpenFile(filePath, *v);
 
-    auto isjsonstr = request->GetQueryValue(MYTEXT("json"));
+    auto isjsonstr = p.GetQueryValue(MYTEXT("json"));
 
     if(isjsonstr == MYTEXT("1")){
 
@@ -335,41 +354,21 @@ void Response2(std::shared_ptr<TcpSocket> handle, std::unique_ptr<HttpReqest>& r
         });
         auto cont = boost::json::serialize(vs);
       
-        ResponseFunc::SendJsonContent( cont, handle);
+        p.SendJsonContent(cont);
 
         return;
     }
 
 
-    auto indexstring = request->GetQueryValue(MYTEXT("Index"));
+    auto indexstring = p.GetQueryValue(MYTEXT("Index"));
 
 
-    if(indexstring == MYTEXT("")){
-         Html html {};
-        MyWin32Out::Print(L"is file html");
-        reader->GetFileNameAndIndex([&html](uint32_t index, const std::string& name){
-
-            mt::mystring path {"?Index="};
-            Number::ToString(path, index);
-            
-            
-            html.Add(false, path, name);
-
-        });
-
-        auto htmlStr = html.GetHtml();
-        ResponseFunc::SendHtmlContent( htmlStr, handle);
-
-        
-
-        return;
-    }
 
     size_t index;
   
-    if(!Number::Parse(indexstring, index)){
+    if(!ParseNumber(indexstring, index)){
 
-        ResponseFunc::Send404(handle);
+        p.Send404();
 
         return;
     }
@@ -379,171 +378,67 @@ void Response2(std::shared_ptr<TcpSocket> handle, std::unique_ptr<HttpReqest>& r
     std::string exname{};
     std::shared_ptr<std::vector<bit7z::byte_t>> buf{};
     if(!reader->GetBytes(static_cast<uint32_t>(index), buf, exname)){
-        ResponseFunc::Send404(handle);
+        p.Send404();
 
         return;
     }
     exname.insert(0, ".");
 
-    ResponseFunc::SendBuffer(UTF8::GetWideCharFromUTF8(exname), buf, handle, *request, is_Inverted_bits);
+    p.SendBuffer(UTF8::GetWideCharFromUTF8(exname), buf, is_Inverted_bits);
 }
 
 
-
-void Response(std::shared_ptr<TcpSocket> handle, std::unique_ptr<HttpReqest>& request, std::shared_ptr<MyZipReader2> reader, std::wstring& folderPath, std::wstring& appPath){
-	
-	auto path = UTF8::GetWideCharFromUTF8(request->GetPath());
-
-    MyWin32Out::Print(L"path:", path);
-    if(path.starts_with(L"/app")){
-        path = appPath +path.substr(4);
-
-        if(File::IsFileOrFolder(path).IsFile()){
-           
-            ResponseFunc::SendFile(path, handle, *request, false);
-
-
-        }
-        else{
-
-            ResponseFunc::Send404(handle);
-
-        }
-
-
-
-        return;
-    }
+void FileRouting(RequestResponseAPI& p, const std::wstring& folderPath, std::shared_ptr<MyZipReader2> reader){
     
+    
+    auto& path = p.GetPath();
+    auto req_wpath = UTF8::GetWideCharFromUTF8(path);
 
-	path =  folderPath + path;
-	
-	auto isff = File::IsFileOrFolder(path);
+    auto all_wpath = folderPath  +req_wpath;
+    MyWin32Out::Print(L"/ path  ",all_wpath);
+    auto is_folder_file = p.IsFileOrFolder(all_wpath);
 
-	if (isff.IsFile()) {
-        MyWin32Out::Print(L"is file");
-        Response2(handle, request, reader, path);
-		
-
-	}
-	else if (isff.IsFolder()) {
-		MyWin32Out::Print(L"IsFolder");
-		if (path.ends_with(L'/')) {
-			path += L'*';
-		}
-		else {
-			path += L"/*";
-		}
-	
-		EnumFileFolder eff{path};
-		EnumFileFolder::Data data{};
-
-
-
-        auto isjsonstr = request->GetQueryValue(MYTEXT("json"));
+    if(is_folder_file==1){
+        FileRouting2(p, all_wpath, reader);
+    }
+    else if(is_folder_file == 2){
+        
+        auto isjsonstr = p.GetQueryValue(MYTEXT("json"));
 
         if(isjsonstr == MYTEXT("1")){
             MyWin32Out::Print(L"IsFolder json");
             boost::json::array vs{};
 
-
-            while (eff.Get(data))
-            {
-                std::wstring name{data.Path()};
+            p.ForeachFile(all_wpath, [&vs](const std::wstring& name, size_t size, bool isfolder){
+               
                 auto u8 = UTF8::GetUTF8FromWideChar(name);
-               boost::json::object kv{};
+                boost::json::object kv{};
 
-               kv.emplace("isfolder",data.IsFolder());
+                kv.emplace("isfolder",isfolder);
                 
                 kv.emplace("name", u8);
                 
                 vs.emplace_back(kv);
-            }
+            });
+            
 
             {
                 auto cont = boost::json::serialize(vs);
-             
-                ResponseFunc::SendJsonContent ( cont, handle);
-
+            
+                p.SendJsonContent(cont);
 
             }
-            
+        
 
-            
-
-            return;
+        
+        }
+        else{
+            p.Send404();
         }
 
-
-        MyWin32Out::Print(L"IsFolder html");
-		Html html{};
-		while (eff.Get(data))
-		{
-			std::string name= UTF8::GetUTF8FromWideChar(data.Path());
-
-
-
-			html.Add(data.IsFolder(),  name, name);
-		}
-		
-
-
-        auto htmlStr =  html.GetHtml();
-        ResponseFunc::SendHtmlContent(htmlStr, handle);
-
-
-	}
-	else {
-		MyWin32Out::Print(L"path error   ", path);
-		
-		ResponseFunc::Send404(handle);
-	}
-}
-
-
-
-void RequestLoop(std::shared_ptr<TcpSocket> handle, std::shared_ptr<MyZipReader2> reader, std::wstring path, std::wstring apppath){
-
-	
-	try {
-		int n = 0;
-
-		while (true)
-		{
-
-			auto request = HttpReqest::Read(handle);
-			
-			Response(handle, request, reader, path, apppath);
-			n++;
-
-			MyWin32Out::Print(n, L"re use link");
-		}
-	}
-    catch (const ArgumentException& e) {
-
-        auto s = UTF8::GetWideCharFromUTF8(e.what());
-		MyWin32Out::Print(L"request loop ArgumentException:", s);
-
-	}
-	catch (const Win32SysteamException& e) {
-		MyWin32Out::Print(L"request loop Win32SysteamException", e.what()); 
-	}
-	catch (const HttpReqest::FormatException& e) {
-        auto s = UTF8::GetWideCharFromUTF8(e.what());
-		MyWin32Out::Print(L"request loop request format error:", s);
-	}
-	catch (const SystemException& e) {
-        auto s = UTF8::GetWideCharFromUTF8(e.what());
-		MyWin32Out::Print(L"request loop SystemException :", s);
-
     }
-    catch (const std::exception& e) {
-        auto s = UTF8::GetWideCharFromUTF8(e.what());
-		MyWin32Out::Print(L"request loop std::exception :", s);
-	}
-    catch(...){
-       
-        MyWin32Out::Exit(L"request loop throw other error :");
+    else{
+        p.Send404();
     }
 }
 
@@ -551,8 +446,8 @@ void RequestLoop(std::shared_ptr<TcpSocket> handle, std::shared_ptr<MyZipReader2
 int wmain(int argc, wchar_t* argv[]) {
 
 
-	 _setmode(_fileno(stdin), _O_U16TEXT);
-     _setmode(_fileno(stdout), _O_U16TEXT);
+    _setmode(_fileno(stdin), _O_U16TEXT);
+    _setmode(_fileno(stdout), _O_U16TEXT);
     _setmode(_fileno(stderr), _O_U16TEXT);
 
 
@@ -574,27 +469,26 @@ int wmain(int argc, wchar_t* argv[]) {
 
     auto reader = std::make_shared<MyZipReader2>(dllpath);
 
+    RunServer rs{};
 
-	Info::Initialization();
-
-    auto f = new Fiber{};
-
-    f->Start([](std::shared_ptr<MyZipReader2> p, std::wstring wpath, std::wstring wapppath){
-
-        TcpSocketListen lis{};
-        lis.Bind(IPEndPoint{"0.0.0.0", 80});
-        lis.Listen(6);
-
-        while (true)
-        {
-            auto connect = lis.Accept();
-
-            Fiber::GetThis().Create(RequestLoop, connect, p, wpath, wapppath);
-        }
-        
+    //静态文件路由
+	rs.Routing([](RequestResponseAPI& p){
+		return p.GetPath().starts_with(MYTEXT("/app"));
+	},
+	[&folderPath=wapppath](RequestResponseAPI& p){
+        StaticFileRouting(p, folderPath);
+	});
 
 
-    }, reader, wpath, wapppath);
+
+    rs.Routing([](RequestResponseAPI& p){
+		return !p.GetPath().starts_with(MYTEXT("/app"));
+	},
+	[&folderPath=wpath, &reader](RequestResponseAPI& p){
+        FileRouting(p, folderPath, reader);
+	});
+
+	rs.Run(80);
 
     return 0;
 }

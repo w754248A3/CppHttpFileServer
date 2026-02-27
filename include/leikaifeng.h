@@ -1,6 +1,7 @@
 #pragma once
 #include <errhandlingapi.h>
 #include <minwindef.h>
+#include <utility>
 #ifndef _LEIKAIFENG
 #define _LEIKAIFENG
 
@@ -13,6 +14,22 @@
 //#define WC_ERR_INVALID_CHARS 0x0080
 //#define URL_ESCAPE_AS_UTF8              0x00040000
 //#define URL_UNESCAPE_AS_UTF8            URL_ESCAPE_AS_UTF8
+
+
+
+template<typename TIn, typename TOut>
+TOut Integer_cast(TIn v){
+	
+	if(std::cmp_greater(v, std::numeric_limits<TOut>::max()) 
+	|| std::cmp_less(v, std::numeric_limits<TOut>::min())){
+			throw std::overflow_error("Integer_cast Overflow");
+	}
+	else{
+		return static_cast<TOut>(v);
+	}
+	
+	
+}
 
 
 template<typename T>

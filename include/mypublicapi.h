@@ -1,7 +1,7 @@
 #pragma once
 
-#ifndef _LEIKAIFENG
-#define _LEIKAIFENG
+#ifndef _MYPUBLICAPI
+#define _MYPUBLICAPI
 #include <errhandlingapi.h>
 #include <minwindef.h>
 #include <utility>
@@ -107,4 +107,4 @@ public:
 };
 
 
-#endif // !_LEIKAIFENG
+#endif // !_MYPUBLICAPI

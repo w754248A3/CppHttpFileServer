@@ -68,7 +68,7 @@ function(my_set_target_out targetname)
 endfunction()
 
 
-add_executable(ZipWebView ./leikaifeng.cpp ./myserverapi.cpp ./ZipWebView.cpp)
+add_executable(ZipWebView ./mypublicapi.cpp ./myserverapi.cpp ./ZipWebView.cpp)
 
 
 my_set_common_properties(ZipWebView)
@@ -77,20 +77,10 @@ my_set_common_properties(ZipWebView)
 my_set_target_out(ZipWebView)
 
 
-add_executable(CppHttpFileServer ./leikaifeng.cpp ./myserverapi.cpp ./CppHttpFileServer.cpp)
+add_executable(CppHttpFileServer ./mypublicapi.cpp ./myserverapi.cpp ./CppHttpFileServer.cpp)
 
 
 my_set_common_properties(CppHttpFileServer)
 
 
 my_set_target_out(CppHttpFileServer)
-
-
-
-add_executable(testfunc ./testfunc.cpp)
-
-
-my_set_common_properties(testfunc)
-
-
-my_set_target_out(testfunc)

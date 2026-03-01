@@ -1,5 +1,4 @@
-﻿#pragma once
-#include <charconv>
+﻿#include <charconv>
 #include <cstddef>
 #include <cstdint>
 #include <exception>
@@ -9,8 +8,6 @@
 #include <string_view>
 #include <system_error>
 #include <winnt.h>
-#ifndef _MYIO
-#define _MYIO
 
 #include <limits>
 #include <utility>
@@ -33,7 +30,7 @@
 //#include <WinDNS.h>
 #include <wininet.h>
 #include <mstcpip.h>
-#include "leikaifeng.h"
+#include "mypublicapi.h"
 #include "myserverapi.h"
 
 
@@ -2692,12 +2689,3 @@ void RunServer::Run(uint16_t port){
 }
 
 
-
-
-
-
-
-
-
-
-#endif // !_MYIO

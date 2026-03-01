@@ -1,6 +1,22 @@
 #include "leikaifeng.h"
+#define WIN32_LEAN_AND_MEAN   
+#include <windows.h>
+#include <shlwapi.h>
+//#define WC_ERR_INVALID_CHARS 0x0080
+//#define URL_ESCAPE_AS_UTF8              0x00040000
+//#define URL_UNESCAPE_AS_UTF8            URL_ESCAPE_AS_UTF8
 
 
+
+
+std::wstring MyWin32Out::GetWin32ErrorMessage(DWORD errorCode) {
+
+	wchar_t buffer[4096];
+
+	auto length = FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM, nullptr, errorCode, 0, buffer, sizeof(buffer), nullptr);
+
+	return std::wstring{ buffer, length };
+}
 
 
 std::wstring UTF8::GetWideCharFromUTF8(const std::string &s) {

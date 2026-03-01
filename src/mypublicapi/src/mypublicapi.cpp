@@ -41,7 +41,7 @@ std::wstring UTF8::GetWideCharFromUTF8(const std::string &s) {
 	else
 	{
 
-		auto length = MultiByteToWideChar((UINT)codePage, FLAG, buffer, size, nullptr, 0);
+		auto length = MultiByteToWideChar(static_cast<UINT>(codePage), FLAG, buffer, size, nullptr, 0);
 
 		if (0 == length) {
 			auto error = GetLastError();
@@ -53,7 +53,7 @@ std::wstring UTF8::GetWideCharFromUTF8(const std::string &s) {
 
 			ret_s.resize(static_cast<size_t>(length));
 
-			if (length != MultiByteToWideChar((UINT)codePage, FLAG, buffer, size, ret_s.data(), length)) {
+			if (length != MultiByteToWideChar(static_cast<UINT>(codePage), FLAG, buffer, size, ret_s.data(), length)) {
 
 				auto error = GetLastError();
 				throw Win32SysteamException{L"GetWideCharFromUTF8 length error", error};
@@ -89,7 +89,7 @@ std::string UTF8::GetUTF8FromWideChar(const std::wstring& s) {
 	}
 	else {
 
-		auto length = WideCharToMultiByte((UINT)codePage, (DWORD)flag, buffer, size, nullptr, 0, nullptr, nullptr);
+		auto length = WideCharToMultiByte(static_cast<UINT>(codePage), static_cast<DWORD>(flag), buffer, size, nullptr, 0, nullptr, nullptr);
 
 		if (0 == length) {
 			auto error = GetLastError();
@@ -101,7 +101,7 @@ std::string UTF8::GetUTF8FromWideChar(const std::wstring& s) {
 
 			ret_s.resize(static_cast<size_t>(length));
 
-			if (length != WideCharToMultiByte((UINT)codePage, (DWORD)flag, buffer, size, ret_s.data(), length, nullptr, nullptr))
+			if (length != WideCharToMultiByte(static_cast<UINT>(codePage), static_cast<DWORD>(flag), buffer, size, ret_s.data(), length, nullptr, nullptr))
 			{
 				auto error = GetLastError();
 				throw Win32SysteamException{L"GetUTF8FromWideChar length error", error};

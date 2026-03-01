@@ -65,7 +65,7 @@ public:
 
 			}
 			else{
-				count = (uint32_t)needCopyCount;
+				count = static_cast<uint32_t>(needCopyCount);
 			}
 
 			char* buf=nullptr;
@@ -132,7 +132,7 @@ class Win32SocketException : public Win32SysteamException {
 public:
 	using Win32SysteamException::Win32SysteamException;
 
-	Win32SocketException(const std::wstring& message) : Win32SysteamException(message, (DWORD)WSAGetLastError()) {
+	Win32SocketException(const std::wstring& message) : Win32SysteamException(message, static_cast<DWORD>(WSAGetLastError())) {
 
 	}
 };
@@ -831,7 +831,7 @@ public:
 		std::array<OVERLAPPED_ENTRY, 32> buffer{};
 
 		DWORD count;
-		auto id = ::GetCurrentThreadId();
+		
 		while (true)
 		{
 			
@@ -971,8 +971,9 @@ public:
 
 
 class TcpSocket : Delete_Base {
-	SOCKET m_handle;
 	bool is_close;
+	SOCKET m_handle;
+	
 	ULONG Read(char* buffer, ULONG size, DWORD flag) {
 		this->OnClose_Throw();
 
@@ -1326,7 +1327,7 @@ public:
 
 		sockaddr_in client;
         int clientsize = sizeof(client);
-        auto connct = ::accept(m_handle, (SOCKADDR *)&client, &clientsize);
+        auto connct = ::accept(m_handle, reinterpret_cast<SOCKADDR *>(&client), &clientsize);
 
         if (connct == INVALID_SOCKET)
         {
@@ -1356,7 +1357,7 @@ class Url {
 	mt::mychar static GetCharFrom(const mt::mystring_view str) {
 		unsigned char v;
 		if(Number::Parse(str, v, 16)){
-			return (mt::mychar)v;
+			return static_cast<mt::mychar>(v);
 		}
 		else{
 			throw Error{};
@@ -1466,7 +1467,7 @@ public:
 				char hex[10];
 				auto res = std::snprintf(hex, sizeof(hex), "%%%02X", c);
 			
-				out.append(hex, (size_t)res);
+				out.append(hex, static_cast<size_t>(res));
 			}
             
         }
@@ -1756,7 +1757,7 @@ private:
 
 public:
 	
-	HttpReqest() : m_buffer(), m_path(), m_firstLine(), m_dic(), m_queryArgs() {
+	HttpReqest() : m_buffer(), m_firstLine(), m_path(), m_dic(), m_queryArgs() {
 
 		m_buffer.resize(HttpReqest::BUFFER_SIZE);
 	}
@@ -1841,7 +1842,7 @@ public:
 			auto bufu8 = buffer.data();
 			auto buf = reinterpret_cast<char*>(bufu8);
 			ULONG canReadSize = static_cast<ULONG>(buffer.size());
-
+			
 			while(true){
 				auto n = socket->Read(buf+length, canReadSize);
 
@@ -1998,7 +1999,7 @@ private:
 		
 		header.append(MYTEXT("\r\n"));
 		//MyWin32Out::Print(::UTF8::GetMultiByte(::UTF8::GetWideCharFromUTF8(mt::mystring{ header})));
-		auto buf = reinterpret_cast<char*>(header.data());
+		auto buf = header.data();
 
 		auto size = ::Integer_cast<size_t, DWORD>(header.size());
 
@@ -2200,7 +2201,7 @@ public:
 
 		ResponseFunc::SendHeader(handle, m_header);
 
-		handle->Write(reinterpret_cast<char*>(content.data()), ::Integer_cast<size_t, DWORD>(content.size()));
+		handle->Write(content.data(), ::Integer_cast<size_t, DWORD>(content.size()));
 	}
 
 	static void SendJsonContent(mt::mystring& content, std::shared_ptr<TcpSocket> handle) {

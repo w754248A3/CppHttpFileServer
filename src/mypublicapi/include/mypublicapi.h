@@ -60,7 +60,7 @@ public:
 
 
 	static void Exit(const std::wstring& message, int errorCode) {
-		Print(message, L"----", GetWin32ErrorMessage((DWORD)errorCode));
+		Print(message, L"----", GetWin32ErrorMessage(static_cast<DWORD>(errorCode)));
 		
 		exit(errorCode);
 	}

@@ -20,14 +20,43 @@ set(Boost_USE_STATIC_RUNTIME OFF)
 
 
 add_compile_options(
-    -pedantic-errors
-    -Wsign-conversion
-    -Woverflow
-    -Wconversion
-    -Werror
+    # 基础 + 核心严格组
+    -Wall
     -Wextra
-    -fconcepts
+    -Wpedantic
+    -pedantic-errors
+    
+    # 所有警告直接转为错误（最严格零警告策略）
+    -Werror
 
+    # 高价值严格检查（我们之前推荐的全部）
+    -Wconversion
+    -Wsign-conversion
+    #-Wshadow #警告局部变量/参数隐藏了外层同名变量/函数
+    -Wformat=2
+    -Wcast-align=strict
+    -Wold-style-cast
+    -Woverloaded-virtual
+    -Wnon-virtual-dtor
+    -Wnull-dereference
+    -Wduplicated-cond
+    -Wlogical-op
+    -Wfloat-equal
+    -Wdouble-promotion
+    -Wuseless-cast
+    -Wzero-as-null-pointer-constant
+    #-Wmissing-declarations #警告全局函数没有在头文件中提前声明
+    -Wundef
+    -Winit-self
+    -Woverflow
+
+    # GCC 额外实用警告
+    -Wextra-semi
+    -Wmissing-include-dirs
+
+    
+    #-Wno-error=array-bounds  #排除这个警告
+    -Wno-array-bounds         # 完全关闭（开发阶段可用）
 )
 
 

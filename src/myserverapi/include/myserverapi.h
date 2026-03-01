@@ -58,7 +58,7 @@ public:
     
 
 
-    class RequestResponseData; 
+    struct RequestResponseData; 
     RequestResponseAPI(std::unique_ptr<RequestResponseData> data);  
     ~RequestResponseAPI();
     
@@ -82,7 +82,7 @@ void Run(uint16_t port);
 RunServer();
 ~RunServer();
 
-class RunServerData;  
+struct RunServerData;  
 private:
                        
     std::unique_ptr<RunServerData> pImpl;

@@ -409,7 +409,7 @@ void FileRouting(RequestResponseAPI& p, const std::wstring& folderPath, std::sha
             MyWin32Out::Print(L"IsFolder json");
             boost::json::array vs{};
 
-            p.ForeachFile(all_wpath, [&vs](const std::wstring& name, size_t size, bool isfolder){
+            p.ForeachFile(all_wpath, [&vs](const std::wstring& name,[[maybe_unused]] size_t size, bool isfolder){
                
                 auto u8 = UTF8::GetUTF8FromWideChar(name);
                 boost::json::object kv{};

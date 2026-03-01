@@ -12,8 +12,8 @@
 #include <string>
 #include <string_view>
 #include <utility>
-#include "include/mypublicapi.h"
-#include "include/myserverapi.h"
+#include "mypublicapi.h"
+#include "myserverapi.h"
 #include <fcntl.h>  // _O_U16TEXT
 #include <io.h>     // _setmode
 
@@ -488,6 +488,7 @@ int wmain(int argc, wchar_t* argv[]) {
         FileRouting(p, folderPath, reader);
 	});
 
+    MyWin32Out::Print(L"new project");
 	rs.Run(80);
 
     return 0;

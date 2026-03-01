@@ -1,5 +1,11 @@
 cmake_minimum_required(VERSION 3.16)
 
+
+if(POLICY CMP0167)
+    cmake_policy(SET CMP0167 NEW)
+endif()
+
+
 project(CppHttpFileServer CXX)
 
 set(CMAKE_CXX_STANDARD 23)
@@ -7,80 +13,39 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 set(MY_DIR_PATH ${PROJECT_SOURCE_DIR})
 
-function(my_set_common_properties target)
-
-    # set_target_properties(${target} PROPERTIES 
-    #                         CMAKE_CXX_STANDARD 20
-    #                         CMAKE_CXX_STANDARD_REQUIRED ON)
-  
-    target_compile_definitions(${target} PUBLIC
-        _WIN32_WINNT=0x0602
-        NTDDI_VERSION=0x06020000
-    )
-   
-    target_compile_options(${target} PUBLIC
-        -pedantic-errors
-        -Wsign-conversion
-        -Woverflow
-        -Wconversion
-        -Werror
-        -Wextra
-        -fconcepts
-    )
-
-    target_link_options(${target} PUBLIC
-    -static
-    -municode)
-   
-    target_include_directories(${target} PUBLIC
-        ${MY_DIR_PATH}/include
-        ${MY_DIR_PATH}/../bit7z-master/include/bit7z
-    )
-
-    target_link_directories(${target} PUBLIC
-        ${MY_DIR_PATH}/../bit7z-master/lib/x64
-    
-    )
-    
+# --- 新增：强制使用静态库 ---
+set(Boost_USE_STATIC_LIBS ON) 
+# 有时候还需要开启静态运行时（取决于 MSYS2 的具体包配置，建议加上）
+set(Boost_USE_STATIC_RUNTIME OFF)
 
 
-    target_link_libraries(${target} PUBLIC
-            boost_json-mt
-            bit7z64
-            oleaut32
-            uuid
-            ws2_32
-            wininet
-            shlwapi
-    )
+add_compile_options(
+    -pedantic-errors
+    -Wsign-conversion
+    -Woverflow
+    -Wconversion
+    -Werror
+    -Wextra
+    -fconcepts
 
-   
-
-endfunction()
+)
 
 
-function(my_set_target_out targetname)
+function(my_set_target_out targetname filename)
     # 设置输出目录
     set_target_properties(${targetname} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${MY_DIR_PATH}/out
-    OUTPUT_NAME "${targetname}"
+    OUTPUT_NAME "${filename}"
     )
 endfunction()
 
 
-add_executable(ZipWebView ./mypublicapi.cpp ./myserverapi.cpp ./ZipWebView.cpp)
+# 3. 查找依赖
+# MSYS2 安装的 Boost 通常可以自动找到
+#find_package(Boost REQUIRED COMPONENTS json headers CONFIG)
+# find_package(OtherLib REQUIRED) 
 
-
-my_set_common_properties(ZipWebView)
-
-
-my_set_target_out(ZipWebView)
-
-
-add_executable(CppHttpFileServer ./mypublicapi.cpp ./myserverapi.cpp ./CppHttpFileServer.cpp)
-
-
-my_set_common_properties(CppHttpFileServer)
-
-
-my_set_target_out(CppHttpFileServer)
+# 4. 添加子目录
+add_subdirectory(src/mypublicapi) # 先构建公共/PCH部分
+add_subdirectory(src/myserverapi)
+add_subdirectory(src/zipwebview)

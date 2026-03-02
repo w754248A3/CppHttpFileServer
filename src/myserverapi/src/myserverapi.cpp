@@ -556,6 +556,19 @@ public:
 
 
 class Fiber : Delete_Base {
+public:
+
+
+	static auto MyGetCurrentFiber(){
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Warray-bounds"
+// 你的问题代码写在这里
+		auto h = ::GetCurrentFiber();
+#pragma GCC diagnostic pop
+	
+		return h;
+	}
+	
 	
 private:
 	class IData;
@@ -583,6 +596,7 @@ public:
 
 		if(s_value == nullptr){
 			MyWin32Out::Exit(L"fiber * is null");
+			std::unreachable();
 		}
 
 		return *s_value;
@@ -695,11 +709,11 @@ private:
 			if (queue.size() > Fiber::FIBER_COUNT)
 			{
 
-				 Fiber::GetThis().PostToIoCompletionPort(IOPortFlag::FiberDelete, GetCurrentFiber());
+				 Fiber::GetThis().PostToIoCompletionPort(IOPortFlag::FiberDelete, Fiber::MyGetCurrentFiber());
 
 			}
 			else {
-				queue.push_back(GetCurrentFiber());
+				queue.push_back(Fiber::MyGetCurrentFiber());
 			}
 
 			Fiber::GetThis().SwitchMain();
@@ -709,9 +723,6 @@ private:
 
 public:
 
-
-	
-	
 	void AddToIoCompletionPort(HANDLE fileHandle) {
 		auto handle = ::CreateIoCompletionPort(fileHandle, m_io_over_port, static_cast<ULONG_PTR>(IOPortFlag::FiberSwitch), 0);
 		if (handle == nullptr) {
@@ -794,7 +805,7 @@ public:
 	}
 
 	void Switch(LPVOID fiber) {
-		if (fiber == GetCurrentFiber()) {
+		if (fiber == Fiber::MyGetCurrentFiber()) {
 			MyWin32Out::Exit(L"Switch Fiber error");
 		}
 
@@ -924,7 +935,7 @@ public:
 		}
 		
 		
-		overlapped.other = GetCurrentFiber();
+		overlapped.other = Fiber::MyGetCurrentFiber();
 		
 		auto ret = ::ReadFile(m_handle, buf, size, nullptr, &overlapped);
 		auto e = GetLastError();
@@ -985,7 +996,7 @@ class TcpSocket : Delete_Base {
 
 		OverLappedEx overlapped = {};
 
-		overlapped.other = GetCurrentFiber();
+		overlapped.other = Fiber::MyGetCurrentFiber();
 
 		//此方法同步完成也会从io完成端口出来
 		auto ret = WSARecv(m_handle, &buf, 1, nullptr, &flag, &overlapped, nullptr);
@@ -1040,7 +1051,7 @@ public:
 
 		OverLappedEx overlapped = {};
 
-		overlapped.other = GetCurrentFiber();
+		overlapped.other = Fiber::MyGetCurrentFiber();
 		
 		auto ret = WSASend(m_handle, buf, bufCount, nullptr, 0, &overlapped, nullptr);
 	
@@ -1103,7 +1114,7 @@ public:
 
 		OverLappedEx overlapped = {};
 
-		overlapped.other = GetCurrentFiber();
+		overlapped.other = Fiber::MyGetCurrentFiber();
 		
 		if (TRUE == Info::GetConnectEx()(handle->GetHandle(), reinterpret_cast<sockaddr*>(&address), sizeof(address), nullptr, 0, nullptr, &overlapped)) {
 			WSAExit(L"connect 同步完成");
@@ -1236,7 +1247,7 @@ public:
 		
 		OverLappedEx overlapped = {};
 
-		overlapped.other = GetCurrentFiber();
+		overlapped.other = Fiber::MyGetCurrentFiber();
 		
 		if (TRUE == Info::GetAcceptEx()(m_handle, handle->GetHandle(), buffer, 0, ADDRESSLENGTH, ADDRESSLENGTH, &length, &overlapped)) {
 			WSAExit(L"accept syn over");

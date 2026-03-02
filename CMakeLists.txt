@@ -56,7 +56,7 @@ add_compile_options(
 
     
     #-Wno-error=array-bounds  #排除这个警告
-    -Wno-array-bounds         # 完全关闭（开发阶段可用）
+    #-Wno-array-bounds         # 完全关闭（开发阶段可用）
 )
 
 

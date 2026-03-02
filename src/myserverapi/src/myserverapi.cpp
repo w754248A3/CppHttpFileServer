@@ -1512,10 +1512,7 @@ public:
 	};
 
 
-	enum Method {
-		GET,
-		HEAD,
-	};
+	
 private:
 	constexpr static size_t BUFFER_SIZE = 4096;
 
@@ -1530,22 +1527,25 @@ private:
 	std::unordered_map<mt::mystring_view, mt::mystring_view> m_queryArgs;
 
 
-	Method m_method;
+	mt::Method m_method;
 
-	static Method ParseMethod(mt::mystring_view s) {
+	static mt::Method ParseMethod(mt::mystring_view s) {
 
 		if (s == MYTEXT("GET")) {
-			return Method::GET;
+			return mt::Method::GET;
 		}
 		else if (s == MYTEXT("HEAD")) {
-			return Method::HEAD;
+			return mt::Method::HEAD;
+		}
+		else if (s == MYTEXT("POST")) {
+			return mt::Method::POST;
 		}
 		else {
 			throw HttpReqest::FormatException{"find method error"};
 		}
 	}
 
-	static void ParsePathAndMethod(mt::mystring_view s, mt::mystring& out_path, Method& out_method) {
+	static void ParsePathAndMethod(mt::mystring_view s, mt::mystring& out_path, mt::Method& out_method) {
 
 		auto first = s.find(u8' ');
 
@@ -2083,7 +2083,7 @@ public:
 
 	static void SendFile(const std::wstring& filePath, std::shared_ptr<TcpSocket> handle, const HttpReqest& request, bool is_Inverted_bits){
 		
-		bool isHeadMethod = request.GetMethod() == HttpReqest::Method::HEAD;
+		bool isHeadMethod = request.GetMethod() == mt::Method::HEAD;
 
 		CreateReadOnlyFile fileHandle{filePath};
 		const auto fileSize = Integer_cast<LONGLONG, size_t>(fileHandle.GetSize());
@@ -2568,6 +2568,10 @@ RequestResponseAPI::RequestResponseAPI(std::unique_ptr<RequestResponseData> data
 RequestResponseAPI::~RequestResponseAPI()=default;
 const mt::mystring& RequestResponseAPI::GetPath(){
     return pImpl->req->GetPath();
+}
+
+mt::Method RequestResponseAPI::GetMethod(){
+	return pImpl->req->GetMethod();
 }
 mt::mystring RequestResponseAPI::GetQueryValue(const mt::mystring& key){
     return  pImpl->req->GetQueryValue(key);

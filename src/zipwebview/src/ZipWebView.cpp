@@ -11,6 +11,7 @@
 #include <minwindef.h>
 #include <string>
 #include <string_view>
+#include <unordered_set>
 #include <utility>
 #include "mypublicapi.h"
 #include "myserverapi.h"
@@ -442,6 +443,57 @@ void FileRouting(RequestResponseAPI& p, const std::wstring& folderPath, std::sha
     }
 }
 
+auto& GetFileList(){
+
+    static std::unordered_set<mt::mystring> set;
+
+    return set;
+}
+
+void PostFileName(RequestResponseAPI& p, const std::wstring& folderPath){
+    if(p.GetQueryValue(MYTEXT("set"))==MYTEXT("1")){
+
+        auto path = folderPath+ UTF8::GetWideCharFromUTF8( p.GetPath());
+        MyWin32Out::Print(L"post name:", path);
+        if(p.IsFileOrFolder(path) ==0){
+            MyWin32Out::Print(L"post name error:", path);
+            p.Send404();
+            return;
+        }
+
+        auto& set = GetFileList();
+
+        set.insert(UTF8::GetUTF8FromWideChar(path));
+
+        boost::json::object kv{};
+        kv.emplace("resultCode",true);
+        
+        auto cont = boost::json::serialize(kv);
+
+        p.SendJsonContent(cont);
+
+    }
+    else if(p.GetQueryValue(MYTEXT("get"))==MYTEXT("1")){
+        boost::json::array vs{};
+        auto& set = GetFileList();
+        for (auto& p : set) {
+            vs.emplace_back(p);
+        }
+
+        boost::json::object kv{};
+        kv.emplace("resultCode",true);
+        kv.emplace("list", vs);
+
+        auto cont = boost::json::serialize(kv);
+
+        p.SendJsonContent(cont);
+
+    }
+    else{
+        p.Send404();
+    }
+   
+}
 
 int wmain(int argc, wchar_t* argv[]) {
 
@@ -473,7 +525,7 @@ int wmain(int argc, wchar_t* argv[]) {
 
     //静态文件路由
 	rs.Routing([](RequestResponseAPI& p){
-		return p.GetPath().starts_with(MYTEXT("/app"));
+		return p.GetMethod() == mt::Method::GET && p.GetPath().starts_with(MYTEXT("/app"));
 	},
 	[&folderPath=wapppath](RequestResponseAPI& p){
         StaticFileRouting(p, folderPath);
@@ -482,10 +534,17 @@ int wmain(int argc, wchar_t* argv[]) {
 
 
     rs.Routing([](RequestResponseAPI& p){
-		return !p.GetPath().starts_with(MYTEXT("/app"));
+		return p.GetMethod() == mt::Method::GET && !p.GetPath().starts_with(MYTEXT("/app"));
 	},
 	[&folderPath=wpath, &reader](RequestResponseAPI& p){
         FileRouting(p, folderPath, reader);
+	});
+
+    rs.Routing([](RequestResponseAPI& p){
+        return p.GetMethod() == mt::Method::POST;
+    },
+	[&folderPath=wpath](RequestResponseAPI& p){
+        PostFileName(p, folderPath);
 	});
 
     MyWin32Out::Print(L"new project");

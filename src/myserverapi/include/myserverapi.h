@@ -26,6 +26,12 @@ using byte = unsigned char;
 using RoutIsFunc =std::function<bool(RequestResponseAPI&)>;
 
 using RoutFunc = std::function<void(RequestResponseAPI&)>;
+
+enum Method {
+    GET,
+    HEAD,
+    POST,
+};
 }
 
 
@@ -38,6 +44,7 @@ public:
 
     mt::mystring GetQueryValue(const mt::mystring& key);
 
+    mt::Method GetMethod();
 
     void SendFile(const std::wstring& filePath, bool is_Inverted_bits);
 

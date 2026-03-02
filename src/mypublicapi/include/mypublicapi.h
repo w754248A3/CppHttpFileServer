@@ -75,6 +75,13 @@ public:
 
 };
 
+class MyWin32Func{
+
+public:
+
+	static std::wstring GetExePath();
+};
+
 
 class Win32SysteamException  {
 

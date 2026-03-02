@@ -115,4 +115,21 @@ std::string UTF8::GetUTF8FromWideChar(const std::wstring& s) {
 	}
 }
 
+std::wstring MyWin32Func::GetExePath()
+{
+
+	wchar_t szFileName[MAX_PATH];
+
+	auto res = GetModuleFileNameW(NULL, szFileName, MAX_PATH);
+	auto error = GetLastError();
+
+	if(res != 0 && error != ERROR_INSUFFICIENT_BUFFER){
+		return  std::wstring{szFileName, res};
+	}
+	else{
+		MyWin32Out::Exit(L"GetModuleFileNameW error", static_cast<int>(error));   
+		return std::wstring{};
+	}
+
+}
 

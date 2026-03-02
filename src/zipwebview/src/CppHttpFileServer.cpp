@@ -1,6 +1,4 @@
 
-#include "include/leikaifeng.h"
-#include "include/myserverapi.h"
 #include <algorithm>
 #include <filesystem>
 #include <minwindef.h>
@@ -10,28 +8,12 @@
 #include <utility>
 #include <fcntl.h>  // _O_U16TEXT
 #include <io.h>     // _setmode
-
-
-std::wstring GetExePath(){
-
-    wchar_t szFileName[MAX_PATH];
-
-    auto res = GetModuleFileNameW(NULL, szFileName, MAX_PATH);
-    auto error = GetLastError();
-
-    if(res != 0 && error != ERROR_INSUFFICIENT_BUFFER){
-        return  std::wstring{szFileName, res};
-    }
-    else{
-        MyWin32Out::Exit(L"GetModuleFileNameW error", (int)error);   
-        return std::wstring{};
-    }
-    
-}
+#include "mypublicapi.h"
+#include "myserverapi.h"
 
 
 std::wstring GetExeFolder(){
-    auto exePath = GetExePath();
+    auto exePath = MyWin32Func::GetExePath();
 
     std::filesystem::path p{exePath};
 
@@ -119,7 +101,7 @@ int wmain(int argc, wchar_t* argv[]) {
 	RunServer rs{};
 
 
-	rs.Routing([](const mt::mystring& path){
+	rs.Routing([]([[maybe_unused]] RequestResponseAPI& p){
 		return true;
 	},
 	[&folderPath= wpath](RequestResponseAPI& p){

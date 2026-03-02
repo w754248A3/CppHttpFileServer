@@ -32,3 +32,39 @@ target_link_libraries(zipwebview PRIVATE
 
 
 my_set_target_out(zipwebview ZipWebView)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+add_executable(cpphttpfileserver src/CppHttpFileServer.cpp)
+
+target_compile_definitions(cpphttpfileserver PUBLIC
+        _WIN32_WINNT=0x0602
+        NTDDI_VERSION=0x06020000
+)
+
+
+# 关键：启用 Unicode 入口点支持 (让链接器找 wmain 而不是 main)
+target_link_options(cpphttpfileserver PRIVATE -static -municode)
+
+target_link_libraries(cpphttpfileserver PRIVATE
+    mypublicapi
+    myserverapi
+    oleaut32
+    uuid
+    ws2_32
+    wininet
+    shlwapi)
+
+
+my_set_target_out(cpphttpfileserver CppHttpFileServer)

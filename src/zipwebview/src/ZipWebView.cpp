@@ -208,6 +208,8 @@ public:
 
     bool GetBytes(uint32_t index, std::shared_ptr<std::vector<bit7z::byte_t>>& fileData, std::string& exname){
         
+        const size_t MIN_BUFFER_SIZE = 1024*1024*30;
+
         auto v = m_data.find(index);
 
         if(v == m_data.end()){
@@ -228,14 +230,25 @@ public:
         TryCanNeedRemove(data);
 
 
-        data.fileData = std::make_shared<std::vector<bit7z::byte_t>>();
+        fileData = std::make_shared<std::vector<bit7z::byte_t>>();
         try{
             
-            m_arc->extractTo(*data.fileData, ::Integer_cast<size_t, uint32_t>(index));
+
+
+            m_arc->extractTo(*fileData, ::Integer_cast<size_t, uint32_t>(index));
             
-            fileData= data.fileData;
-            data.count=1;
-            return true;
+            if(fileData->size() >= MIN_BUFFER_SIZE){
+                
+                data.fileData=fileData;
+                data.count=1;
+                return true;
+            }
+            else{
+                data.fileData=nullptr;
+                data.count=0;
+                return true;
+            }
+
         }
         catch (const bit7z::BitException &ex)
         {

@@ -3,8 +3,11 @@
 #include <cstdint>
 #include <exception>
 #include <functional>
+#include <ios>
+#include <istream>
 #include <minwindef.h>
 #include <span>
+#include <stdexcept>
 #include <string_view>
 #include <system_error>
 #include <winnt.h>
@@ -2521,17 +2524,13 @@ void RequestLoop(RunServer::RunServerData* sd, std::shared_ptr<TcpSocket> handle
 
 	
 	try {
-		int n = 0;
-
+		
 		while (true)
 		{
 
 			auto request = HttpReqest::Read(handle);
 			
 			Response(sd, handle, request.get());
-			n++;
-
-			MyWin32Out::Print(n, L"re use link");
 		}
 	}
     catch (const ArgumentException& e) {
@@ -2705,3 +2704,176 @@ void RunServer::Run(uint16_t port){
 }
 
 
+
+// 定义读取回调的类型
+// 参数: 目标缓冲区(buffer), 要读取的字节数(size), 当前绝对偏移量(offset)
+// 返回: 实际成功读取的字节数
+using ReadCallback = std::function<std::streamsize(char* buffer, std::streamsize size, uint64_t offset)>;
+
+class CustomInputStreambuf : public std::streambuf {
+private:
+    ReadCallback read_func;
+    std::streamsize current_offset;
+    const std::streamsize total_size;
+
+public:
+    CustomInputStreambuf(std::streamsize size, ReadCallback callback)
+        : read_func(std::move(callback)), current_offset(0), total_size(size) {
+        // 关闭标准 streambuf 的内置缓存
+        setg(nullptr, nullptr, nullptr);
+    }
+	~CustomInputStreambuf()=default;
+protected:
+    // 核心：重写批量读取，直接绕过内置缓存，将数据塞入 s
+    std::streamsize xsgetn(char_type* s, std::streamsize n) override {
+        if (current_offset >= total_size) return 0; // 已到末尾
+
+        // 确保不会读取超过总大小
+        auto bytes_to_read = std::min(n, total_size - current_offset);
+        
+        // 调用用户的回调函数
+        auto bytes_read = read_func(s, bytes_to_read, ::Integer_cast<std::streamsize, uint64_t>(current_offset));
+        
+        current_offset += bytes_read; // 更新偏移量
+        return bytes_read;
+    }
+
+    // 处理单字节读取 (标准库备用机制)
+    int_type underflow() override {
+        if (current_offset >= total_size) {
+            return traits_type::eof();
+        }
+        char c;
+        if (xsgetn(&c, 1) == 1) {
+            // 注意：因为没有使用缓存，我们需要马上把指针退回来，以便下次读取
+            current_offset--; 
+            return traits_type::to_int_type(c);
+        }
+        return traits_type::eof();
+    }
+    
+    int_type uflow() override {
+        if (current_offset >= total_size) {
+            return traits_type::eof();
+        }
+        char c;
+        if (xsgetn(&c, 1) == 1) {
+            return traits_type::to_int_type(c); // uflow 自动推进偏移，不需要退回
+        }
+        return traits_type::eof();
+    }
+
+    // 核心：处理 7z 引擎的 Seek 跳转请求
+    pos_type seekoff(off_type off, std::ios_base::seekdir dir,[[maybe_unused]]  std::ios_base::openmode which) override {
+        if (dir == std::ios_base::beg) {
+            current_offset = off;
+        } else if (dir == std::ios_base::cur) {
+            current_offset += off;
+        } else if (dir == std::ios_base::end) {
+            current_offset = total_size + off;
+        }
+        // 约束边界
+        if (current_offset < 0) current_offset = 0;
+        if (current_offset > total_size) current_offset = total_size;
+        
+        return current_offset;
+    }
+
+    pos_type seekpos(pos_type pos, [[maybe_unused]] std::ios_base::openmode which) override {
+        current_offset = pos;
+        return current_offset;
+    }
+};
+
+
+
+
+CustomInputStream::CustomInputStream(const std::wstring& path) :std::istream(), buf(nullptr) {
+
+	auto file = std::make_shared<CreateReadOnlyFile>(path);
+
+	auto func = [file](char* buf, std::streamsize size, uint64_t offset) {
+		
+
+		auto n = file->Read(buf, ::Integer_cast<std::streamsize, DWORD>(size), offset);
+	
+		return ::Integer_cast<ULONG, std::streamsize>(n);
+
+	};
+
+	auto size = ::Integer_cast<LONGLONG, std::streamsize>(file->GetSize());
+
+	auto p = std::make_unique<CustomInputStreambuf>(size, func);
+
+	this->buf.swap(p);
+
+	this->set_rdbuf(this->buf.get());
+}
+
+
+CustomInputStream::~CustomInputStream()=default;
+
+
+
+class SequenceRun::SequenceRunClass{
+private:
+	std::queue<HANDLE> m_fiberQ;
+	volatile uint32_t m_count;
+
+
+	class P{
+		SequenceRun::SequenceRunClass& m_v;
+		public:
+
+			P(SequenceRun::SequenceRunClass& v):m_v(v){
+				m_v.m_count+=1;
+				if(m_v.m_count > 1){
+					auto f = Fiber::MyGetCurrentFiber();
+
+					m_v.m_fiberQ.push(f);
+
+					Fiber::GetThis().SwitchMain();
+				}
+			}
+
+			~P(){
+				m_v.m_count-=1;
+				if(m_v.m_count > 0){
+
+					auto f = m_v.m_fiberQ.front();
+
+					m_v.m_fiberQ.pop();
+
+					Fiber::GetThis().PostMain(f);
+				}
+
+			}
+	};
+
+public:
+
+	SequenceRunClass(): m_fiberQ(), m_count(0){
+
+	}
+
+
+	void Run(std::function<void()>& func){
+
+		P p{*this};
+		
+		func();
+
+		
+	}
+};
+
+SequenceRun::SequenceRun():pImpl(std::make_shared<SequenceRunClass>()){
+
+}
+
+SequenceRun::~SequenceRun()=default;
+
+void SequenceRun::Run(std::function<void()>& func){
+
+	this->pImpl->Run(func);
+}

@@ -5,6 +5,8 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <iostream>
+#include <streambuf>
 #ifndef _MYSERVERAPI
 #define _MYSERVERAPI
 
@@ -99,9 +101,33 @@ private:
 
 
 
+class CustomInputStreambuf;
+// 包装成 std::istream
+class CustomInputStream : public std::istream {
+
+public:
+    CustomInputStream(const std::wstring& path);
+    ~CustomInputStream();
+    
+private:
+    
+    std::unique_ptr<CustomInputStreambuf> buf;
+};
 
 
 
+class SequenceRun{
+
+
+public:
+    SequenceRun();
+    ~SequenceRun();
+    void Run(std::function<void()>& func);
+    class SequenceRunClass;
+private:
+    
+    std::shared_ptr<SequenceRunClass> pImpl;
+};
 
 
 

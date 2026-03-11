@@ -7,6 +7,8 @@
 #include <cmath>
 #include <cstddef>
 #include <filesystem>
+#include <functional>
+#include <istream>
 #include <memory>
 #include <minwindef.h>
 #include <string>
@@ -73,6 +75,7 @@ private:
 
     bit7z::Bit7zLibrary m_lib;
     std::wstring m_path;
+    std::unique_ptr<CustomInputStream> m_stream;
     std::unique_ptr<bit7z::BitArchiveReader> m_arc;
 
     std::unordered_map<uint32_t, MyNeedData> m_data; 
@@ -82,6 +85,7 @@ public:
     MyZipReader2(const std::wstring& dllPath):
      m_lib(bit7z::to_tstring(dllPath)),
      m_path(),
+     m_stream(),
      m_arc(),
      m_data()
    
@@ -89,26 +93,30 @@ public:
        
     }
 
-    const bit7z::BitInFormat &detectRAR(const std::string &in_file, const std::string &password)
+    const bit7z::BitInFormat &detectRAR(std::istream& inStream, const std::string &password)
     {
 
         try
         {
-            bit7z::BitArchiveReader info(m_lib, in_file, bit7z::BitFormat::Rar5, password);
-          
+            bit7z::BitArchiveReader info(m_lib, inStream, bit7z::BitFormat::Rar5, password);
+            inStream.clear();
+            inStream.seekg(0, std::ios::beg);
             return bit7z::BitFormat::Rar5;
         }
         catch (const bit7z::BitException &)
         {
-           
-            bit7z::BitArchiveReader info(m_lib, in_file, bit7z::BitFormat::Rar, password);
+            inStream.clear();
+            inStream.seekg(0, std::ios::beg);
+            bit7z::BitArchiveReader info(m_lib, inStream, bit7z::BitFormat::Rar, password);
+            inStream.clear();
+            inStream.seekg(0, std::ios::beg);
             return bit7z::BitFormat::Rar;
         }
     }
 
-    void OpenFile(const std::wstring& path, const bit7z::BitInFormat& format){
+    bool OpenFile(const std::wstring& path, const bit7z::BitInFormat& format){
         if(path == m_path){
-            return;
+            return true;
         }
 
         m_path= path;
@@ -120,21 +128,30 @@ public:
 
         const auto password = extract_target_content(u8path);
 
-        
-        if((*fv) == bit7z::BitFormat::Rar){
-             fv = &detectRAR(u8path, password);
-        }
+        try{
+            
+            
 
+            m_stream= std::make_unique<CustomInputStream>(path);
 
-        
+            if((*fv) == bit7z::BitFormat::Rar){
+                fv = &detectRAR(*m_stream, password);
+            }
 
-        m_arc = std::make_unique<bit7z::BitArchiveReader>(m_lib, 
-        u8path, 
-        *fv,
-        password);
-        
-        m_data.clear();
+            m_arc = std::make_unique<bit7z::BitArchiveReader>(m_lib, 
+            *m_stream, 
+            *fv,
+            password);
+            
+            m_data.clear();
       
+        }
+        catch(const bit7z::BitException &ex){
+            MyWin32Out::Print(L"open zip pack error");
+            
+            return false;
+        }
+        
         try{
             auto arc_items = m_arc->items();
             for (auto &item : arc_items)
@@ -162,11 +179,13 @@ public:
         }
         catch (const bit7z::BitException &ex)
         {
-
-            MyWin32Out::Exit(UTF8::GetWideCharFromUTF8(ex.what()));
+            
+            MyWin32Out::Print(L"get zip pack list error");
+           
+            return false;
         }
 
-        
+        return true;
 
     }
 
@@ -300,13 +319,41 @@ bool GetBitInFormat(const std::wstring& filePath, bit7z::BitInFormat const * * v
     
 }
 
+
+class MySequenceRunData{
+private:
+
+    std::shared_ptr<MyZipReader2> _reader;
+  
+    SequenceRun _run;
+
+public:
+    MySequenceRunData(std::wstring dllpath):_reader(), _run(){
+
+        _reader= std::make_shared<MyZipReader2>(dllpath);
+    }
+
+
+    void Run(std::function<void(std::shared_ptr<MyZipReader2> reader)>&& func){
+        
+        std::function<void()> f = [reader= _reader, &func](){
+            func(reader);
+        };
+
+        _run.Run(f);
+
+        
+    }
+
+};
+
 void StaticFileRouting(RequestResponseAPI& p, const std::wstring& folderPath){
     
     auto& path = p.GetPath();
     auto req_wpath = UTF8::GetWideCharFromUTF8(path);
 
     auto all_wpath = folderPath  +req_wpath.substr(4);
-    MyWin32Out::Print(L"/app path  ",all_wpath);
+  
     auto is_folder_file = p.IsFileOrFolder(all_wpath);
 
     if(is_folder_file==1){
@@ -325,7 +372,7 @@ bool ParseNumber(const mt::mystring& s, size_t& n){
 }
 
 
-void FileRouting2(RequestResponseAPI& p, const std::wstring& filePath, std::shared_ptr<MyZipReader2> reader){
+void FileRouting2(RequestResponseAPI& p, const std::wstring& filePath, std::shared_ptr<MySequenceRunData> msrd){
     
 
     bool is_Inverted_bits = false;
@@ -345,8 +392,16 @@ void FileRouting2(RequestResponseAPI& p, const std::wstring& filePath, std::shar
         return;
     }
 
+    bool isopen = false;
+    msrd->Run([ &isopen, &filePath, &v](std::shared_ptr<MyZipReader2> reader){
+        isopen = reader->OpenFile(filePath, *v);
+    });
 
-    reader->OpenFile(filePath, *v);
+    if(!isopen){
+
+        p.Send404();
+        return;
+    }
 
     auto isjsonstr = p.GetQueryValue(MYTEXT("json"));
 
@@ -355,17 +410,21 @@ void FileRouting2(RequestResponseAPI& p, const std::wstring& filePath, std::shar
         MyWin32Out::Print(L"is file json");
         boost::json::array vs{};
 
-        reader->GetFileNameAndIndex([&vs](uint32_t index, const std::string& name){
+        msrd->Run([&vs](std::shared_ptr<MyZipReader2> reader){
+            
+            reader->GetFileNameAndIndex([&vs](uint32_t index, const std::string& name){
 
-            
-            boost::json::object kv{};
-            kv.emplace("index",index);
-            
-            kv.emplace("path", name);
-            
-            vs.emplace_back(kv);
+                
+                boost::json::object kv{};
+                kv.emplace("index",index);
+                
+                kv.emplace("path", name);
+                
+                vs.emplace_back(kv);
 
+            });
         });
+
         auto cont = boost::json::serialize(vs);
       
         p.SendJsonContent(cont);
@@ -391,7 +450,15 @@ void FileRouting2(RequestResponseAPI& p, const std::wstring& filePath, std::shar
     MyWin32Out::Print(index);
     std::string exname{};
     std::shared_ptr<std::vector<bit7z::byte_t>> buf{};
-    if(!reader->GetBytes(static_cast<uint32_t>(index), buf, exname)){
+
+    bool b=false;
+    msrd->Run([&b, index, &buf, &exname](std::shared_ptr<MyZipReader2> reader){
+        b = reader->GetBytes(static_cast<uint32_t>(index), buf, exname);
+    });
+
+
+
+    if(!b){
         p.Send404();
 
         return;
@@ -402,7 +469,7 @@ void FileRouting2(RequestResponseAPI& p, const std::wstring& filePath, std::shar
 }
 
 
-void FileRouting(RequestResponseAPI& p, const std::wstring& folderPath, std::shared_ptr<MyZipReader2> reader){
+void FileRouting(RequestResponseAPI& p, const std::wstring& folderPath, std::shared_ptr<MySequenceRunData> reader){
     
     
     auto& path = p.GetPath();
@@ -532,7 +599,7 @@ int wmain(int argc, wchar_t* argv[]) {
 
 	std::wstring dllpath{L"7z.dll"};
 
-    auto reader = std::make_shared<MyZipReader2>(dllpath);
+    auto reader = std::make_shared<MySequenceRunData>(dllpath);
 
     RunServer rs{};
 

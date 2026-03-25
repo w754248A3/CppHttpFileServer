@@ -52,7 +52,7 @@ public:
 
 	template<NotStringOrChar T, typename ...TS>
 	static void Print(T value, TS ...values) {
-		std::wcout << value << "   ";
+		std::wcout << value << L"   ";
 		Print(values...);
 	}
 
